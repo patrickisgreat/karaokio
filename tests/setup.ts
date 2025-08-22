@@ -35,8 +35,13 @@ beforeAll(() => {
 
 beforeEach(() => {
   // Clean up test database before each test
-  if (fs.existsSync(TEST_DB_PATH)) {
-    fs.unlinkSync(TEST_DB_PATH)
+  try {
+    if (fs.existsSync(TEST_DB_PATH)) {
+      fs.unlinkSync(TEST_DB_PATH)
+    }
+  } catch (error) {
+    // Ignore cleanup errors
+    console.warn('Test cleanup warning:', error)
   }
 })
 
@@ -59,14 +64,22 @@ afterEach(() => {
 afterAll(() => {
   // Clean up test directories
   TEST_DIRS.forEach(dir => {
-    if (fs.existsSync(dir)) {
-      fs.rmSync(dir, { recursive: true, force: true })
+    try {
+      if (fs.existsSync(dir)) {
+        fs.rmSync(dir, { recursive: true, force: true })
+      }
+    } catch (error) {
+      console.warn('Test cleanup warning:', error)
     }
   })
   
   // Clean up test database
-  if (fs.existsSync(TEST_DB_PATH)) {
-    fs.unlinkSync(TEST_DB_PATH)
+  try {
+    if (fs.existsSync(TEST_DB_PATH)) {
+      fs.unlinkSync(TEST_DB_PATH)
+    }
+  } catch (error) {
+    console.warn('Test cleanup warning:', error)
   }
 })
 

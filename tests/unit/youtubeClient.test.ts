@@ -1,11 +1,13 @@
 import { describe, test, expect, beforeEach, jest } from '@jest/globals'
 import { YouTubeClient } from '@/lib/youtubeClient'
+import fs from 'fs'
+import path from 'path'
 
 // Mock youtube-dl-exec
 jest.mock('youtube-dl-exec')
 import youtubedl from 'youtube-dl-exec'
 
-const MockedYoutubeDl = youtubedl as jest.MockedFunction<typeof youtubedl>
+const MockedYoutubeDl = youtubedl as any
 
 describe('YouTubeClient', () => {
   beforeEach(() => {
@@ -142,12 +144,21 @@ describe('YouTubeClient', () => {
 
   describe('downloadKaraokeVideo', () => {
     test('should download video successfully', async () => {
-      const mockVideoInfo = {
-        title: 'Bohemian Rhapsody Karaoke',
-        id: 'test123'
+      // Create a mock downloaded file in the actual download directory
+      const downloadDir = path.join(process.cwd(), 'youtube_videos')
+      if (!fs.existsSync(downloadDir)) {
+        fs.mkdirSync(downloadDir, { recursive: true })
       }
-
-      MockedYoutubeDl.mockResolvedValue(mockVideoInfo)
+      
+      // Mock youtubedl to succeed
+      MockedYoutubeDl.mockResolvedValue({})
+      
+      // Create the expected downloaded file (calculate the same hash as the method)
+      const crypto = require('crypto')
+      const hash = crypto.createHash('md5').update('Queen_Bohemian Rhapsody').digest('hex').substring(0, 8)
+      const expectedFilename = `Queen_Bohemian_Rhapsody_${hash}.mp4`
+      const expectedPath = path.join(downloadDir, expectedFilename)
+      fs.writeFileSync(expectedPath, 'mock video content')
 
       const result = await YouTubeClient.downloadKaraokeVideo(
         'https://youtube.com/watch?v=test123',

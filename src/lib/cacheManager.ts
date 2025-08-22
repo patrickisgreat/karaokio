@@ -45,29 +45,33 @@ export class CacheManager {
     }
 
     // Initialize cache table
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS processed_cache (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        cache_key TEXT UNIQUE NOT NULL,
-        title TEXT NOT NULL,
-        artist TEXT NOT NULL,
-        original_audio_path TEXT,
-        instrumental_path TEXT,
-        lyrics_path TEXT,
-        video_path TEXT,
-        youtube_video_id TEXT,
-        processing_quality TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        last_accessed DATETIME DEFAULT CURRENT_TIMESTAMP,
-        file_size INTEGER DEFAULT 0
-      );
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS processed_cache (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          cache_key TEXT UNIQUE NOT NULL,
+          title TEXT NOT NULL,
+          artist TEXT NOT NULL,
+          original_audio_path TEXT,
+          instrumental_path TEXT,
+          lyrics_path TEXT,
+          video_path TEXT,
+          youtube_video_id TEXT,
+          processing_quality TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          last_accessed DATETIME DEFAULT CURRENT_TIMESTAMP,
+          file_size INTEGER DEFAULT 0
+        );
+      `)
+    } catch (error) {
+      // Cache table might already exist
+    }
 
-      -- Add cache_key column to songs table if it doesn't exist
-      ALTER TABLE songs ADD COLUMN cache_key TEXT;
-      ALTER TABLE songs ADD COLUMN torrent_magnet TEXT;
-      ALTER TABLE songs ADD COLUMN youtube_video_id TEXT;
-      ALTER TABLE songs ADD COLUMN processing_method TEXT;
-    `)
+    // Try to add new columns to existing songs table (ignore errors if they exist)
+    try { db.exec('ALTER TABLE songs ADD COLUMN cache_key TEXT'); } catch {}
+    try { db.exec('ALTER TABLE songs ADD COLUMN torrent_magnet TEXT'); } catch {}
+    try { db.exec('ALTER TABLE songs ADD COLUMN youtube_video_id TEXT'); } catch {}
+    try { db.exec('ALTER TABLE songs ADD COLUMN processing_method TEXT'); } catch {}
   }
 
   static generateCacheKey(title: string, artist: string, quality: string): string {

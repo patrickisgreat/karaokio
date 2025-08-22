@@ -53,11 +53,11 @@ export class KaraokeDB {
 
   static addSong(song: QueuedSong) {
     const stmt = db.prepare(`
-      INSERT INTO songs (id, user_id, song_title, artist, search_query, status)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO songs (id, user_id, song_title, artist, search_query, status, requested_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `)
     stmt.run(song.id, song.user.id, song.songTitle, song.artist, 
-             `${song.songTitle} ${song.artist}`, song.status)
+             `${song.songTitle} ${song.artist}`, song.status, song.requestedAt.toISOString())
   }
 
   static updateSongStatus(id: string, status: QueuedSong['status'], progress?: number) {

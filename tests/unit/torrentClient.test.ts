@@ -1,10 +1,10 @@
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals'
-import { TorrentClient } from '@/lib/torrentClient'
 
-// Mock WebTorrent and TorrentSearchApi
+// Mock WebTorrent and TorrentSearchApi BEFORE importing TorrentClient
 jest.mock('webtorrent')
 jest.mock('torrent-search-api')
 
+import { TorrentClient } from '@/lib/torrentClient'
 import WebTorrent from 'webtorrent'
 import TorrentSearchApi from 'torrent-search-api'
 

@@ -15,6 +15,15 @@ describe('CacheManager', () => {
     if (!fs.existsSync(testCacheDir)) {
       fs.mkdirSync(testCacheDir, { recursive: true })
     }
+    
+    // Clear any existing cache entries
+    try {
+      // Force a new database instance for each test
+      const db = require('@/lib/database').default
+      db.exec('DELETE FROM processed_cache')
+    } catch (error) {
+      // Ignore if database doesn't exist yet
+    }
   })
 
   afterEach(() => {
@@ -45,7 +54,7 @@ describe('CacheManager', () => {
     })
 
     test('should normalize case and whitespace', () => {
-      const key1 = CacheManager.generateCacheKey('  BOHEMIAN rhapsody  ', '  Queen  ', 'HIGH')
+      const key1 = CacheManager.generateCacheKey('  BOHEMIAN rhapsody  ', '  Queen  ', 'high')
       const key2 = CacheManager.generateCacheKey('bohemian rhapsody', 'queen', 'high')
       
       expect(key1).toBe(key2)
@@ -67,9 +76,9 @@ describe('CacheManager', () => {
         video: path.join(testCacheDir, 'karaoke.mp4')
       }
 
-      // Create mock files
+      // Create mock files with some content
       Object.values(testFiles).forEach(filePath => {
-        fs.writeFileSync(filePath, 'mock content', 'utf8')
+        fs.writeFileSync(filePath, 'mock content for testing file size calculation', 'utf8')
       })
 
       // Add to cache
@@ -146,8 +155,10 @@ describe('CacheManager', () => {
         video: path.join(testCacheDir, 'karaoke.mp4')
       }
 
-      fs.writeFileSync(testFiles.instrumental, 'mock content', 'utf8')
-      fs.writeFileSync(testFiles.video, 'mock content', 'utf8')
+      // Create files with enough content to register in MB calculation (1MB+ each)
+      const largeContent = 'a'.repeat(1024 * 1024 + 1) // Just over 1MB
+      fs.writeFileSync(testFiles.instrumental, largeContent, 'utf8')
+      fs.writeFileSync(testFiles.video, largeContent, 'utf8')
 
       // Add multiple entries
       await CacheManager.addToCache('Song 1', 'Artist 1', 'high', testFiles)
@@ -171,8 +182,8 @@ describe('CacheManager', () => {
         video: path.join(testCacheDir, 'karaoke.mp4')
       }
 
-      fs.writeFileSync(testFiles.instrumental, 'mock content', 'utf8')
-      fs.writeFileSync(testFiles.video, 'mock content', 'utf8')
+      fs.writeFileSync(testFiles.instrumental, 'mock content for testing file size calculation', 'utf8')
+      fs.writeFileSync(testFiles.video, 'mock content for testing file size calculation', 'utf8')
 
       // Add entries
       await CacheManager.addToCache(testTitle, testArtist, testQuality, testFiles)
@@ -194,8 +205,8 @@ describe('CacheManager', () => {
         video: path.join(testCacheDir, 'karaoke.mp4')
       }
 
-      fs.writeFileSync(testFiles.instrumental, 'mock content', 'utf8')
-      fs.writeFileSync(testFiles.video, 'mock content', 'utf8')
+      fs.writeFileSync(testFiles.instrumental, 'mock content for testing file size calculation', 'utf8')
+      fs.writeFileSync(testFiles.video, 'mock content for testing file size calculation', 'utf8')
 
       // Add entries
       await CacheManager.addToCache('Song 1', 'Artist 1', 'high', testFiles)

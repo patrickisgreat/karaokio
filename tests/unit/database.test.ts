@@ -30,6 +30,15 @@ describe('KaraokeDB', () => {
     
     // Override database path for tests
     process.env.TEST_DB_PATH = testDbPath
+    
+    // Clear all database tables for clean test isolation
+    try {
+      const db = require('@/lib/database').default
+      db.exec('DELETE FROM songs')
+      db.exec('DELETE FROM users')
+    } catch (error) {
+      // Database might not exist yet
+    }
   })
 
   afterEach(() => {
@@ -80,24 +89,26 @@ describe('KaraokeDB', () => {
     })
 
     test('should add and retrieve song', () => {
-      KaraokeDB.addSong(mockSong)
+      const testSong = { ...mockSong, id: 'song-add-retrieve' }
+      KaraokeDB.addSong(testSong)
       
-      const retrievedSong = KaraokeDB.getSong(mockSong.id)
+      const retrievedSong = KaraokeDB.getSong(testSong.id)
       
       expect(retrievedSong).not.toBeNull()
-      expect(retrievedSong!.id).toBe(mockSong.id)
-      expect(retrievedSong!.songTitle).toBe(mockSong.songTitle)
-      expect(retrievedSong!.artist).toBe(mockSong.artist)
-      expect(retrievedSong!.status).toBe(mockSong.status)
+      expect(retrievedSong!.id).toBe(testSong.id)
+      expect(retrievedSong!.songTitle).toBe(testSong.songTitle)
+      expect(retrievedSong!.artist).toBe(testSong.artist)
+      expect(retrievedSong!.status).toBe(testSong.status)
       expect(retrievedSong!.user.id).toBe(mockUser.id)
     })
 
     test('should update song status', () => {
-      KaraokeDB.addSong(mockSong)
+      const testSong = { ...mockSong, id: 'song-update-status' }
+      KaraokeDB.addSong(testSong)
       
-      KaraokeDB.updateSongStatus(mockSong.id, 'processing', 50)
+      KaraokeDB.updateSongStatus(testSong.id, 'processing', 50)
       
-      const updatedSong = KaraokeDB.getSong(mockSong.id)
+      const updatedSong = KaraokeDB.getSong(testSong.id)
       expect(updatedSong!.status).toBe('processing')
       expect(updatedSong!.processingProgress).toBe(50)
     })
@@ -140,7 +151,7 @@ describe('KaraokeDB', () => {
       
       const updatedSong = KaraokeDB.getSong(mockSong.id)
       expect(updatedSong!.karaoke?.instrumentalUrl).toBe('/path/to/instrumental.wav')
-      expect(updatedSong!.karaoke?.lyricsUrl).toBeUndefined()
+      expect(updatedSong!.karaoke?.lyricsUrl).toBeNull()
     })
 
     test('should remove song', () => {
@@ -191,12 +202,12 @@ describe('KaraokeDB', () => {
       const song1 = { 
         ...mockSong, 
         id: 'song-1', 
-        requestedAt: new Date(now.getTime() + 1000) // Later
+        requestedAt: new Date(now.getTime() + 10000) // Later (10 seconds)
       }
       const song2 = { 
         ...mockSong, 
         id: 'song-2', 
-        requestedAt: new Date(now.getTime() - 1000) // Earlier
+        requestedAt: new Date(now.getTime() - 10000) // Earlier (10 seconds ago)
       }
       
       KaraokeDB.addSong(song1)
