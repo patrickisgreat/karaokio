@@ -8,25 +8,28 @@ import { CacheManager } from './cacheManager'
 import path from 'path'
 import fs from 'fs'
 
+export interface AutonomousProcessingOptions extends ProcessingOptions {
+  useCache?: boolean
+  maxTorrentWaitTime?: number
+  maxYouTubeWaitTime?: number
+}
+
 export interface AutonomousProcessingJob {
   songId: string
-  options: ProcessingOptions & {
-    useCache: boolean
-    maxTorrentWaitTime: number
-    maxYouTubeWaitTime: number
-  }
+  options: AutonomousProcessingOptions
 }
 
 const processingJobs = new Map<string, AutonomousProcessingJob>()
 
-export async function processKaraokeSong(songId: string, options: ProcessingOptions) {
+export async function processKaraokeSong(songId: string, options: AutonomousProcessingOptions = {}) {
   const job: AutonomousProcessingJob = { 
     songId, 
     options: {
+      quality: 'high',
       ...options,
-      useCache: true,
-      maxTorrentWaitTime: 5 * 60 * 1000, // 5 minutes
-      maxYouTubeWaitTime: 2 * 60 * 1000   // 2 minutes
+      useCache: options.useCache ?? true,
+      maxTorrentWaitTime: options.maxTorrentWaitTime ?? 5 * 60 * 1000, // 5 minutes
+      maxYouTubeWaitTime: options.maxYouTubeWaitTime ?? 2 * 60 * 1000   // 2 minutes
     }
   }
   processingJobs.set(songId, job)

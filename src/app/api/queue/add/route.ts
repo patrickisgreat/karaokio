@@ -36,9 +36,9 @@ export async function POST(request: NextRequest) {
     
     // Simple heuristic: assume format is "Song Title Artist Name" or "Artist - Song"
     if (searchQuery.includes(' - ')) {
-      [artist, songTitle] = searchQuery.split(' - ').map(s => s.trim())
+      [artist, songTitle] = searchQuery.split(' - ').map((s: string) => s.trim())
     } else if (searchQuery.includes(' by ')) {
-      [songTitle, artist] = searchQuery.split(' by ').map(s => s.trim())
+      [songTitle, artist] = searchQuery.split(' by ').map((s: string) => s.trim())
     } else {
       // Take last word(s) as artist, rest as title
       const words = parts
