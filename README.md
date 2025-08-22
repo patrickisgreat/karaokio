@@ -55,9 +55,10 @@ Vocal Separation → Lyrics Sync → Video Generation → Ready to Sing
 - **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
 - **Database**: SQLite with better-sqlite3
 - **Audio Processing**: Demucs, Spleeter, FFmpeg  
-- **Video Generation**: FFmpeg with complex filters
-- **APIs**: Spotify, MusicBrainz, Lyrics.ovh, QuickLRC
-- **File Handling**: Multer for uploads, organized storage
+- **Video Processing**: FFmpeg with complex filters and audio replacement
+- **Content Acquisition**: WebTorrent for audio, YouTube-dl for karaoke videos
+- **APIs**: Spotify, MusicBrainz, Lyrics.ovh, QuickLRC, Genius, Musixmatch
+- **Caching**: Smart file-based caching with automatic cleanup
 
 ## Quick Start
 
@@ -73,30 +74,73 @@ npm install
 npm run dev
 ```
 
-## How It Works
+## 🚀 The Autonomous Karaoke Factory
 
-### Song Processing
-1. **Search**: Query Spotify/MusicBrainz for metadata
-2. **Acquire**: Use uploaded files or local music library
-3. **Separate**: Run Demucs/Spleeter to remove vocals  
-4. **Lyrics**: Fetch from multiple APIs and sync with audio
-5. **Video**: Generate karaoke video with animated background
+Karaokio can **automatically find, download, and process any song** into karaoke format:
 
-### Queue System
-- SQLite database tracks users, songs, and processing status
-- Background jobs handle long-running audio processing
-- WebSocket updates (planned) for real-time progress
-- Automatic queue advancement when songs complete
+### Complete Autonomous Flow
+```
+User Request → Cache Check → Torrent Search → YouTube Karaoke Video → 
+Vocal Separation → Lyrics Sync → Audio Replacement → Ready to Sing!
+```
+
+**Step-by-Step Process:**
+1. 🔍 **Cache Check**: Instantly serve if song already processed
+2. 📥 **Torrent Download**: Find and download original song via torrents  
+3. 🎥 **YouTube Search**: Download matching karaoke video automatically
+4. 🎙️ **Vocal Separation**: Remove vocals with Demucs/Spleeter AI
+5. 📝 **Lyrics Sync**: Fetch and synchronize lyrics with timestamps
+6. 🔄 **Audio Replacement**: Replace karaoke video audio with AI-processed track
+7. 💾 **Cache Storage**: Save for instant future access
+8. 🎤 **Ready to Sing**: Full karaoke experience with professional quality
+
+### 🔧 Configuration & Security
+
+**All sensitive data is centralized and never committed:**
+- Copy `.env.example` to `.env.local`
+- Add your API keys (Spotify, Genius, etc.)
+- Configure torrent/YouTube settings
+- All secrets stay local (in `.gitignore`)
+
+### Real-World Example
+
+**User Action:**
+```
+Alice adds: "Don't Stop Me Now Queen"
+```
+
+**System Response (Fully Automatic):**
+```
+[5 seconds]  ✅ Cache miss - starting autonomous processing
+[30 seconds] 📥 Downloaded from torrent: "Queen - Don't Stop Me Now.mp3"
+[45 seconds] 🎥 Downloaded YouTube karaoke: "Don't Stop Me Now Karaoke"
+[3 minutes]  🎙️ Vocal separation complete (Demucs)
+[3.5 min]    📝 Lyrics fetched and synchronized
+[4 minutes]  🔄 Replaced karaoke video audio with instrumental
+[4.5 min]    💾 Cached for future use
+[5 minutes]  🎉 "Ready to Sing!" - Alice can start karaoke
+```
 
 ### File Organization
 ```
-uploads/     # User uploaded audio
-output/      # Processed karaoke files
+uploads/          # User uploaded audio
+downloads/        # Torrent downloads  
+youtube_videos/   # Downloaded karaoke videos
+cache/           # Smart caching system
+output/          # Final karaoke files
   [song-id]/
-    ├── instrumental.wav
-    ├── lyrics.lrc  
-    └── karaoke.mp4
-temp/        # Processing workspace
+    ├── original.mp3        # Downloaded source
+    ├── instrumental.wav    # De-vocalized track
+    ├── lyrics.lrc         # Synchronized lyrics
+    └── final_karaoke.mp4  # Ready-to-stream video
+temp/            # Processing workspace
 ```
 
-This is a complete, production-ready karaoke system perfect for parties, bars, or home use!
+### 🎯 Perfect For
+
+- **House Parties**: Everyone requests songs, system handles everything
+- **Karaoke Bars**: Autonomous song acquisition and processing
+- **Private Events**: No copyright concerns, full automation
+- **Music Enthusiasts**: High-quality vocal separation and video sync
+
+This creates a **completely autonomous karaoke experience** - just add requests and sing!
