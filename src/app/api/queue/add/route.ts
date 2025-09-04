@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { v4 as uuidv4 } from 'uuid'
 import { KaraokeDB } from '@/lib/database'
 import { QueuedSong, User } from '@/types/queue'
-import { processKaraokeSong } from '@/lib/autonomousProcessor'
 
 const AVATAR_COLORS = [
   'bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500',
@@ -65,10 +64,12 @@ export async function POST(request: NextRequest) {
     KaraokeDB.addSong(song)
 
     // Start autonomous background processing
-    processKaraokeSong(songId, {
-      quality: processingQuality || 'balanced',
-      outputFormat: outputFormat || 'wav'
-    }).catch(error => {
+    import('@/lib/autonomousProcessor').then(({ processKaraokeSong }) => {
+      return processKaraokeSong(songId, {
+        quality: processingQuality || 'balanced',
+        outputFormat: outputFormat || 'wav'
+      })
+    }).catch((error: any) => {
       console.error('Autonomous processing failed:', error)
       KaraokeDB.updateSongStatus(songId, 'failed')
     })

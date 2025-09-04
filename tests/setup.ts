@@ -14,8 +14,10 @@ const TEST_DIRS = [
 ]
 
 beforeAll(() => {
-  // Set test environment variables
-  process.env.NODE_ENV = 'test'
+  // Set test environment variables (only if not already set)
+  if (!process.env.NODE_ENV) {
+    (process.env as any).NODE_ENV = 'test'
+  }
   process.env.UPLOAD_DIR = path.join(__dirname, 'uploads')
   process.env.OUTPUT_DIR = path.join(__dirname, 'output')
   process.env.TEMP_DIR = path.join(__dirname, 'temp')
