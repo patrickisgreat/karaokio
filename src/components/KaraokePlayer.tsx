@@ -171,19 +171,19 @@ export default function KaraokePlayer({ songId }: KaraokePlayerProps) {
           {/* Previous lyric */}
           {currentLyricIndex > 0 && (
             <p className="text-2xl text-gray-400 mb-4 opacity-50">
-              {mockLyrics[currentLyricIndex - 1]?.text}
+              {lyrics[currentLyricIndex - 1]?.text}
             </p>
           )}
           
           {/* Current lyric */}
           <p className="text-6xl font-bold text-white mb-4 drop-shadow-lg animate-pulse">
-            {mockLyrics[currentLyricIndex]?.text || "♪ Music ♪"}
+            {lyrics[currentLyricIndex]?.text || "♪ Music ♪"}
           </p>
           
           {/* Next lyric */}
-          {currentLyricIndex < mockLyrics.length - 1 && (
+          {currentLyricIndex < lyrics.length - 1 && (
             <p className="text-2xl text-gray-300 opacity-70">
-              {mockLyrics[currentLyricIndex + 1]?.text}
+              {lyrics[currentLyricIndex + 1]?.text}
             </p>
           )}
         </div>
@@ -193,12 +193,12 @@ export default function KaraokePlayer({ songId }: KaraokePlayerProps) {
           <div className="bg-white/20 rounded-full h-2">
             <div 
               className="bg-gradient-to-r from-pink-500 to-purple-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(currentLyricIndex / mockLyrics.length) * 100}%` }}
+              style={{ width: `${lyrics.length > 0 ? (currentLyricIndex / lyrics.length) * 100 : 0}%` }}
             ></div>
           </div>
           <div className="flex justify-between text-white/70 text-sm mt-2">
             <span>{Math.floor(currentTime / 1000)}s</span>
-            <span>{Math.floor((mockLyrics.length * 3000) / 1000)}s</span>
+            <span>{Math.floor((lyrics.length * 10000) / 1000)}s</span>
           </div>
         </div>
       </div>
@@ -240,7 +240,7 @@ export default function KaraokePlayer({ songId }: KaraokePlayerProps) {
       {/* Hidden audio element */}
       <audio
         ref={audioRef}
-        src="/sample-instrumental.mp3" // TODO: Use actual processed instrumental
+        src={song.instrumentalPath || '/silence.mp3'} // Use processed instrumental or silence
         onEnded={handleEnd}
       />
     </div>
