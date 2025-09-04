@@ -97,19 +97,60 @@ export default function KaraokePlayer({ songId }: KaraokePlayerProps) {
 
   const togglePlayPause = () => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio || !song?.instrumentalPath) {
+      // No audio available, just simulate playback with lyrics
+      setIsPlaying(!isPlaying)
+      if (!isPlaying) {
+        // Start a timer to advance lyrics without audio
+        const interval = setInterval(() => {
+          setCurrentLyricIndex(prev => {
+            if (prev >= lyrics.length - 1) {
+              clearInterval(interval)
+              setIsPlaying(false)
+              return prev
+            }
+            return prev + 1
+          })
+        }, 3000) // Change lyric every 3 seconds
+      }
+      return
+    }
 
     if (isPlaying) {
       audio.pause()
     } else {
-      audio.play()
+      audio.play().catch(err => {
+        console.warn('Audio playback failed:', err)
+        // Fall back to lyric-only mode
+        setIsPlaying(!isPlaying)
+      })
     }
     setIsPlaying(!isPlaying)
   }
 
-  const handleEnd = () => {
-    // TODO: Mark song as complete and return to main queue
-    window.location.href = '/'
+  const handleEnd = async () => {
+    try {
+      const response = await fetch(`/api/queue/${songId}/complete`, {
+        method: 'POST',
+      })
+      const result = await response.json()
+      
+      if (result.success) {
+        if (result.nextSongId) {
+          // Go to next song
+          window.location.href = `/sing/${result.nextSongId}`
+        } else {
+          // No more songs, return to main queue
+          window.location.href = '/'
+        }
+      } else {
+        console.error('Failed to complete song:', result.error)
+        window.location.href = '/'
+      }
+    } catch (error) {
+      console.error('Error completing song:', error)
+      window.location.href = '/'
+    }
   }
 
   if (loading) {
@@ -229,7 +270,7 @@ export default function KaraokePlayer({ songId }: KaraokePlayerProps) {
           </button>
           
           <button
-            onClick={() => window.location.href = '/'}
+            onClick={handleEnd}
             className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-full font-medium transition-colors"
           >
             Skip Song
@@ -238,11 +279,16 @@ export default function KaraokePlayer({ songId }: KaraokePlayerProps) {
       </div>
 
       {/* Hidden audio element */}
-      <audio
-        ref={audioRef}
-        src={song.instrumentalPath || '/silence.mp3'} // Use processed instrumental or silence
-        onEnded={handleEnd}
-      />
+      {song.instrumentalPath && (
+        <audio
+          ref={audioRef}
+          src={song.instrumentalPath}
+          onEnded={handleEnd}
+          onError={(e) => {
+            console.warn('Audio failed to load:', song.instrumentalPath)
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -26,6 +26,7 @@ export default function QueueList() {
       const data = await response.json()
       
       if (response.ok) {
+        console.log('Queue API response:', data)
         // Convert database format to UI format
         const formattedQueue = data.queue.map((song: any, index: number) => ({
           id: song.id,
@@ -41,6 +42,7 @@ export default function QueueList() {
           position: song.status === 'queued' ? index + 1 : undefined,
           estimatedWait: song.status === 'queued' ? `${(index + 1) * 4} min` : undefined
         }))
+        console.log('Formatted queue:', formattedQueue)
         setQueue(formattedQueue)
         setError('')
       } else {
@@ -54,19 +56,25 @@ export default function QueueList() {
   }
 
   const handleDelete = async (songId: string) => {
+    console.log('Deleting song with ID:', songId)
     try {
       const response = await fetch(`/api/queue?songId=${songId}`, {
         method: 'DELETE',
       })
       
+      console.log('Delete response status:', response.status)
+      
       if (response.ok) {
+        console.log('Delete successful, refreshing queue')
         // Refresh the queue after deletion
         fetchQueue()
       } else {
         const data = await response.json()
+        console.error('Delete failed:', data)
         setError(data.error || 'Failed to delete song')
       }
     } catch (err) {
+      console.error('Delete network error:', err)
       setError('Network error')
     }
   }
@@ -95,7 +103,7 @@ export default function QueueList() {
       case 'queued':
         return (
           <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs font-bold">
-            {(queue.find(s => s.id === mockQueue.find(ms => ms.status === status)?.id)as any)?.position}
+            {queue.findIndex(s => s.status === 'queued') + 1}
           </div>
         )
       default:
@@ -185,7 +193,10 @@ export default function QueueList() {
               <div className="flex space-x-2 ml-2">
                 {item.status === 'ready' && (
                   <button 
-                    onClick={() => window.location.href = `/sing/${item.id}`}
+                    onClick={() => {
+                      console.log('Starting song with ID:', item.id)
+                      window.location.href = `/sing/${item.id}`
+                    }}
                     className="text-green-600 hover:text-green-700 transition-colors"
                     title="Start singing"
                   >
