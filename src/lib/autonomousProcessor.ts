@@ -8,7 +8,9 @@ import { CacheManager } from './cacheManager'
 import path from 'path'
 import fs from 'fs'
 
-export interface AutonomousProcessingOptions extends ProcessingOptions {
+export interface AutonomousProcessingOptions {
+  quality?: 'fast' | 'balanced' | 'high'
+  outputFormat?: 'wav' | 'mp3' | 'audio-only'
   useCache?: boolean
   maxTorrentWaitTime?: number
   maxYouTubeWaitTime?: number
@@ -25,8 +27,8 @@ export async function processKaraokeSong(songId: string, options: AutonomousProc
   const job: AutonomousProcessingJob = { 
     songId, 
     options: {
-      quality: 'high',
-      ...options,
+      quality: options.quality ?? 'high',
+      outputFormat: options.outputFormat ?? 'wav',
       useCache: options.useCache ?? true,
       maxTorrentWaitTime: options.maxTorrentWaitTime ?? 5 * 60 * 1000, // 5 minutes
       maxYouTubeWaitTime: options.maxYouTubeWaitTime ?? 2 * 60 * 1000   // 2 minutes
@@ -49,8 +51,8 @@ export async function processKaraokeSong(songId: string, options: AutonomousProc
     KaraokeDB.updateSongStatus(songId, 'processing', 5)
     console.log(`🔍 Checking cache for: ${artist} - ${songTitle}`)
     
-    const cached = await CacheManager.checkCache(songTitle, artist, options.quality)
-    if (cached && options.useCache) {
+    const cached = await CacheManager.checkCache(songTitle, artist, job.options.quality!)
+    if (cached && job.options.useCache) {
       console.log(`✅ Cache hit! Using existing files for ${artist} - ${songTitle}`)
       
       // Update database with cached paths
@@ -134,11 +136,14 @@ export async function processKaraokeSong(songId: string, options: AutonomousProc
 
     // STEP 4: Vocal separation
     KaraokeDB.updateSongStatus(songId, 'processing', 45)
-    console.log(`🎙️ Starting vocal separation with ${options.quality} quality...`)
+    console.log(`🎙️ Starting vocal separation with ${job.options.quality} quality...`)
     
     const { instrumental } = await AudioProcessor.separateVocals(
       audioPath,
-      options,
+      { 
+        quality: job.options.quality!, 
+        outputFormat: job.options.outputFormat! 
+      },
       (progress) => {
         const overallProgress = 45 + Math.round(progress * 0.25) // 45-70%
         KaraokeDB.updateSongStatus(songId, 'processing', overallProgress)
@@ -218,7 +223,7 @@ export async function processKaraokeSong(songId: string, options: AutonomousProc
     await CacheManager.addToCache(
       songTitle,
       artist,
-      options.quality,
+      job.options.quality!,
       {
         original: audioPath,
         instrumental: instrumental,

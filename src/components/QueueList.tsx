@@ -1,38 +1,82 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
-const mockQueue = [
-  {
-    id: '2',
-    user: { id: '2', name: 'Bob', color: 'bg-blue-500' },
-    songTitle: 'Don\'t Stop Believin\'',
-    artist: 'Journey',
-    status: 'processing' as const,
-    processingProgress: 65,
-    estimatedTimeLeft: '2 min'
-  },
-  {
-    id: '3',
-    user: { id: '3', name: 'Charlie', color: 'bg-green-500' },
-    songTitle: 'Sweet Caroline',
-    artist: 'Neil Diamond',
-    status: 'ready' as const,
-    position: 1
-  },
-  {
-    id: '4',
-    user: { id: '4', name: 'Diana', color: 'bg-purple-500' },
-    songTitle: 'Livin\' on a Prayer',
-    artist: 'Bon Jovi',
-    status: 'queued' as const,
-    position: 2,
-    estimatedWait: '8 min'
-  }
-]
+interface QueueItem {
+  id: string
+  user: { id: string; name: string; color: string }
+  songTitle: string
+  artist: string
+  status: 'processing' | 'ready' | 'queued' | 'failed'
+  processingProgress?: number
+  estimatedTimeLeft?: string
+  position?: number
+  estimatedWait?: string
+}
 
 export default function QueueList() {
-  const [queue] = useState(mockQueue)
+  const [queue, setQueue] = useState<QueueItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const fetchQueue = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/queue')
+      const data = await response.json()
+      
+      if (response.ok) {
+        // Convert database format to UI format
+        const formattedQueue = data.queue.map((song: any, index: number) => ({
+          id: song.id,
+          user: {
+            id: song.user.id,
+            name: song.user.name,
+            color: song.user.color
+          },
+          songTitle: song.songTitle,
+          artist: song.artist,
+          status: song.status,
+          processingProgress: song.processingProgress || 0,
+          position: song.status === 'queued' ? index + 1 : undefined,
+          estimatedWait: song.status === 'queued' ? `${(index + 1) * 4} min` : undefined
+        }))
+        setQueue(formattedQueue)
+        setError('')
+      } else {
+        setError(data.error || 'Failed to fetch queue')
+      }
+    } catch (err) {
+      setError('Network error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async (songId: string) => {
+    try {
+      const response = await fetch(`/api/queue?songId=${songId}`, {
+        method: 'DELETE',
+      })
+      
+      if (response.ok) {
+        // Refresh the queue after deletion
+        fetchQueue()
+      } else {
+        const data = await response.json()
+        setError(data.error || 'Failed to delete song')
+      }
+    } catch (err) {
+      setError('Network error')
+    }
+  }
+
+  useEffect(() => {
+    fetchQueue()
+    // Poll for updates every 5 seconds
+    const interval = setInterval(fetchQueue, 5000)
+    return () => clearInterval(interval)
+  }, [])
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -72,12 +116,36 @@ export default function QueueList() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-800">Song Queue</h3>
+          <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+        </div>
+        <div className="text-center py-8 text-gray-500">Loading queue...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-800">Song Queue</h3>
         <span className="text-sm text-gray-500">{queue.length} songs</span>
       </div>
+
+      {error && (
+        <div className="p-3 bg-red-100 text-red-800 rounded-lg border border-red-200">
+          {error}
+          <button 
+            onClick={fetchQueue}
+            className="ml-2 text-red-600 hover:text-red-700 underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       <div className="space-y-3">
         {queue.map((item) => (
@@ -127,6 +195,7 @@ export default function QueueList() {
                   </button>
                 )}
                 <button 
+                  onClick={() => handleDelete(item.id)}
                   className="text-gray-400 hover:text-red-500 transition-colors"
                   title="Remove from queue"
                 >

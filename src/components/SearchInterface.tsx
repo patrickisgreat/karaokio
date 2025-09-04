@@ -5,39 +5,90 @@ import { useState } from 'react'
 export default function SearchInterface() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
+  const [userName, setUserName] = useState('')
+  const [message, setMessage] = useState('')
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!searchQuery.trim()) return
     
     setIsSearching(true)
-    // TODO: Implement search logic
-    console.log('Searching for:', searchQuery)
-    setTimeout(() => setIsSearching(false), 2000) // Mock delay
+    setMessage('')
+    
+    try {
+      const response = await fetch('/api/queue/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          searchQuery: searchQuery.trim(),
+          userName: userName || 'Anonymous',
+          processingQuality: 'balanced',
+          outputFormat: 'wav'
+        }),
+      })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        setMessage(`✅ "${searchQuery}" added to queue! Processing will begin automatically.`)
+        setSearchQuery('')
+      } else {
+        setMessage(`❌ Failed to add song: ${result.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      setMessage(`❌ Network error: ${error}`)
+    } finally {
+      setIsSearching(false)
+    }
   }
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="bg-white rounded-2xl shadow-xl p-8">
         <form onSubmit={handleSearch} className="mb-8">
-          <div className="relative">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search for a song... (e.g., 'Bohemian Rhapsody Queen')"
-              className="w-full px-6 py-4 text-lg rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none transition-colors"
-              disabled={isSearching}
-            />
-            <button
-              type="submit"
-              disabled={isSearching || !searchQuery.trim()}
-              className="absolute right-2 top-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isSearching ? 'Searching...' : 'Search'}
-            </button>
+          <div className="space-y-4">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search for a song... (e.g., 'Bohemian Rhapsody Queen')"
+                className="w-full px-6 py-4 text-lg rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none transition-colors"
+                disabled={isSearching}
+              />
+              <button
+                type="submit"
+                disabled={isSearching || !searchQuery.trim()}
+                className="absolute right-2 top-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isSearching ? 'Adding...' : 'Add to Queue'}
+              </button>
+            </div>
+            
+            <div>
+              <input
+                type="text"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                placeholder="Your name (optional)"
+                className="w-full px-4 py-2 text-sm rounded-lg border border-gray-300 focus:border-blue-500 focus:outline-none transition-colors"
+                disabled={isSearching}
+              />
+            </div>
           </div>
         </form>
+
+        {message && (
+          <div className={`mb-6 p-4 rounded-lg ${
+            message.includes('✅') 
+              ? 'bg-green-100 text-green-800 border border-green-200' 
+              : 'bg-red-100 text-red-800 border border-red-200'
+          }`}>
+            {message}
+          </div>
+        )}
 
         <div className="grid md:grid-cols-2 gap-6">
           <div className="space-y-4">

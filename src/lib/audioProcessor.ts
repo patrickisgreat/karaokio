@@ -5,7 +5,7 @@ import ffmpeg from 'fluent-ffmpeg'
 
 export interface ProcessingOptions {
   quality: 'fast' | 'balanced' | 'high'
-  outputFormat: 'wav' | 'mp3'
+  outputFormat: 'wav' | 'mp3' | 'audio-only'
 }
 
 export class AudioProcessor {

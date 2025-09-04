@@ -6,33 +6,82 @@ interface KaraokePlayerProps {
   songId: string
 }
 
-const mockLyrics = [
-  { time: 0, text: "Is this the real life?" },
-  { time: 3000, text: "Is this just fantasy?" },
-  { time: 6000, text: "Caught in a landslide" },
-  { time: 9000, text: "No escape from reality" },
-  { time: 12000, text: "Open your eyes" },
-  { time: 15000, text: "Look up to the skies and see" },
-  { time: 18000, text: "I'm just a poor boy" },
-  { time: 21000, text: "I need no sympathy" }
-]
+interface Song {
+  id: string
+  songTitle: string
+  artist: string
+  user: { name: string; color: string }
+  status: string
+  instrumentalPath?: string
+  videoPath?: string
+  lyricsPath?: string
+}
 
 export default function KaraokePlayer({ songId }: KaraokePlayerProps) {
+  const [song, setSong] = useState<Song | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [currentLyricIndex, setCurrentLyricIndex] = useState(0)
+  const [lyrics, setLyrics] = useState<Array<{time: number, text: string}>>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const audioRef = useRef<HTMLAudioElement>(null)
 
   useEffect(() => {
+    const fetchSong = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/songs/${songId}`)
+        const data = await response.json()
+        
+        if (response.ok) {
+          setSong(data.song)
+          
+          // Start the song if it's ready
+          if (data.song.status === 'ready') {
+            await fetch(`/api/queue/${songId}/start`, { method: 'POST' })
+          }
+          
+          // Load lyrics if available
+          if (data.song.lyricsPath) {
+            // For now, use placeholder lyrics - in real implementation,
+            // you'd fetch the LRC file content and parse it
+            setLyrics([
+              { time: 0, text: "♪ Instrumental karaoke track ♪" },
+              { time: 10000, text: "♪ Sing along to the music ♪" },
+              { time: 20000, text: "♪ Enjoy your karaoke session ♪" }
+            ])
+          } else {
+            setLyrics([
+              { time: 0, text: "♪ Processing lyrics... ♪" },
+              { time: 5000, text: "♪ Song is being prepared ♪" }
+            ])
+          }
+          
+          setError('')
+        } else {
+          setError(data.error || 'Song not found')
+        }
+      } catch (err) {
+        setError('Failed to load song')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchSong()
+  }, [songId])
+
+  useEffect(() => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio || lyrics.length === 0) return
 
     const updateTime = () => {
       setCurrentTime(audio.currentTime * 1000)
       
       // Find current lyric
-      const currentIndex = mockLyrics.findIndex((lyric, index) => {
-        const nextLyric = mockLyrics[index + 1]
+      const currentIndex = lyrics.findIndex((lyric, index) => {
+        const nextLyric = lyrics[index + 1]
         return audio.currentTime * 1000 >= lyric.time && 
                (!nextLyric || audio.currentTime * 1000 < nextLyric.time)
       })
@@ -44,7 +93,7 @@ export default function KaraokePlayer({ songId }: KaraokePlayerProps) {
 
     audio.addEventListener('timeupdate', updateTime)
     return () => audio.removeEventListener('timeupdate', updateTime)
-  }, [])
+  }, [lyrics])
 
   const togglePlayPause = () => {
     const audio = audioRef.current
@@ -63,22 +112,54 @@ export default function KaraokePlayer({ songId }: KaraokePlayerProps) {
     window.location.href = '/'
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="animate-spin w-12 h-12 border-4 border-white border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-xl">Loading karaoke...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !song) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+          </div>
+          <p className="text-xl mb-4">{error || 'Song not found'}</p>
+          <button
+            onClick={() => window.location.href = '/'}
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-medium transition-colors"
+          >
+            Back to Queue
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex flex-col">
       {/* Header */}
       <div className="p-6 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Bohemian Rhapsody</h1>
-            <p className="text-xl text-purple-200">by Queen</p>
+            <h1 className="text-3xl font-bold">{song.songTitle}</h1>
+            <p className="text-xl text-purple-200">by {song.artist}</p>
           </div>
           <div className="text-right">
             <p className="text-lg">Now Singing:</p>
             <div className="flex items-center justify-end space-x-2">
-              <div className="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center text-white font-bold">
-                A
+              <div className={`w-10 h-10 ${song.user.color} rounded-full flex items-center justify-center text-white font-bold`}>
+                {song.user.name.charAt(0)}
               </div>
-              <span className="text-xl font-semibold">Alice</span>
+              <span className="text-xl font-semibold">{song.user.name}</span>
             </div>
           </div>
         </div>

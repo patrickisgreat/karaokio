@@ -54,8 +54,7 @@ export class YouTubeClient {
           `ytsearch${limit}:${query}`,
           {
             dumpJson: true,
-            noWarnings: true,
-            extractFlat: true
+            noWarnings: true
           }
         )
 
@@ -178,7 +177,6 @@ export class YouTubeClient {
         format: 'best[height<=1080][ext=mp4]/best[ext=mp4]/best',
         output: outputTemplate,
         writeInfoJson: true,
-        extractFlat: false,
         noWarnings: true
       })
 
