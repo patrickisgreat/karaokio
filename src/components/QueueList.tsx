@@ -78,8 +78,8 @@ export default function QueueList() {
     return () => clearInterval(interval)
   }, [])
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
+  const getStatusIcon = (item: QueueItem) => {
+    switch (item.status) {
       case 'processing':
         return (
           <div className="animate-spin w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full"></div>
@@ -95,7 +95,7 @@ export default function QueueList() {
       case 'queued':
         return (
           <div className="w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center text-white text-xs font-bold">
-            {(queue.find(s => s.id === mockQueue.find(ms => ms.status === status)?.id)as any)?.position}
+            {item.position}
           </div>
         )
       default:
@@ -103,10 +103,12 @@ export default function QueueList() {
     }
   }
 
-  const getStatusText = (item: typeof mockQueue[0]) => {
+  const getStatusText = (item: QueueItem) => {
     switch (item.status) {
       case 'processing':
-        return `Processing... ${item.processingProgress}% (${item.estimatedTimeLeft} left)`
+        return item.estimatedTimeLeft
+          ? `Processing... ${item.processingProgress}% (${item.estimatedTimeLeft} left)`
+          : `Processing... ${item.processingProgress}%`
       case 'ready':
         return 'Ready to sing! Up next'
       case 'queued':
@@ -165,7 +167,7 @@ export default function QueueList() {
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-1">
                     <h4 className="font-medium text-gray-800">{item.songTitle}</h4>
-                    {getStatusIcon(item.status)}
+                    {getStatusIcon(item)}
                   </div>
                   <p className="text-sm text-gray-600">by {item.artist}</p>
                   <p className="text-sm text-gray-500 mt-1">{item.user.name}</p>
