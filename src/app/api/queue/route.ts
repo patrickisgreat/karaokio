@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireParty } from '@/lib/partyAuth'
 import { KaraokeDB } from '@/lib/database'
 
 export async function GET(request: NextRequest) {
+  const auth = requireParty(request)
+  if ('error' in auth) return auth.error
+
   try {
     const queue = KaraokeDB.getQueue()
     const current = KaraokeDB.getCurrentSong()
@@ -18,6 +22,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const auth = requireParty(request, { host: true })
+  if ('error' in auth) return auth.error
+
   try {
     const { searchParams } = new URL(request.url)
     const songId = searchParams.get('songId')

@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireParty } from '@/lib/partyAuth'
 import { KaraokeDB } from '@/lib/database'
 
 export async function GET(request: NextRequest, { params }: { params: { songId: string } }) {
+  const auth = requireParty(request)
+  if ('error' in auth) return auth.error
+
   try {
     const { songId } = params
 

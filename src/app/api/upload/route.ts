@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireParty } from '@/lib/partyAuth'
 import { resolveDataPath } from '@/lib/paths'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 import { v4 as uuidv4 } from 'uuid'
 
 export async function POST(request: NextRequest) {
+  const auth = requireParty(request)
+  if ('error' in auth) return auth.error
+
   try {
     const data = await request.formData()
     const file: File | null = data.get('audio') as unknown as File
