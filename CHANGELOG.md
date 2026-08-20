@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0](https://github.com/patrickisgreat/karaokio/compare/v1.0.0...v1.1.0) (2026-08-20)
+
+
+### Features
+
+* bootstrap-as-code — the OIDC trust anchor is stack-managed ([b0f97ec](https://github.com/patrickisgreat/karaokio/commit/b0f97ec9f5ac3ea876e72f061299ebdbb58ac702))
+* bootstrap-as-code for the OIDC trust anchor ([0ef7fa0](https://github.com/patrickisgreat/karaokio/commit/0ef7fa0b1010a0c59a215827986c945ec421bc51))
+
+
+### Bug Fixes
+
+* host-pin secret length meets the template's 16-char floor ([dfc0040](https://github.com/patrickisgreat/karaokio/commit/dfc00402734ab99bac5a93a2de34b3b5e430bb4c))
+
 ## 1.0.0 (2026-08-20)
 
 
