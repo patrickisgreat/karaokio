@@ -1,0 +1,63 @@
+# The on switch. Run it (GitHub mobile app works great) and the run summary
+# hands you the party URL a couple of minutes later.
+#
+# Pinning min=max=1 on the scalable target matters: with the floor at 0, a
+# quiet stretch mid-party would let CPU target-tracking scale the box away
+# mid-song. party-down restores the floor to 0.
+name: Party Up 🎤
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: party-switch
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  CLUSTER: karaokio-prod
+  SERVICE: karaokio-app
+
+jobs:
+  up:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: AWS auth (OIDC)
+        uses: patrickisgreat/actions-toolkit/actions/aws-auth@main
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Start the party box
+        run: |
+          aws application-autoscaling register-scalable-target \
+            --service-namespace ecs \
+            --resource-id "service/$CLUSTER/$SERVICE" \
+            --scalable-dimension ecs:service:DesiredCount \
+            --min-capacity 1 --max-capacity 1
+          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" \
+            --desired-count 1 >/dev/null
+          echo "Waiting for the task to reach RUNNING…"
+          aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE"
+
+      - name: Find the party URL
+        run: |
+          TASK_ARN=$(aws ecs list-tasks --cluster "$CLUSTER" --service-name "$SERVICE" \
+            --query 'taskArns[0]' --output text)
+          ENI_ID=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+            --query "tasks[0].attachments[0].details[?name=='networkInterfaceId'].value" \
+            --output text)
+          PUBLIC_IP=$(aws ec2 describe-network-interfaces --network-interface-ids "$ENI_ID" \
+            --query 'NetworkInterfaces[0].Association.PublicIp' --output text)
+          {
+            echo "## 🎤 The party box is up"
+            echo ""
+            echo "**http://$PUBLIC_IP:3000**"
+            echo ""
+            echo "The party code is on the big screen. Run **Party Down** when you're done singing."
+          } >> "$GITHUB_STEP_SUMMARY"

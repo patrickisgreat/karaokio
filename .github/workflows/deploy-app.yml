@@ -1,0 +1,63 @@
+# Builds the karaokio image, pushes it to ECR, and rolls the ECS service to
+# the new digest via actions-toolkit's deploy-aws workflow. Runs on every main
+# push that touches the app, plus on demand.
+name: Deploy App
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'Dockerfile'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'next.config.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-app
+  cancel-in-progress: false
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      image: ${{ steps.build.outputs.image-digest-ref }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: AWS auth (OIDC)
+        uses: patrickisgreat/actions-toolkit/actions/aws-auth@main
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Build and push
+        id: build
+        uses: patrickisgreat/actions-toolkit/actions/docker-build-push@main
+        with:
+          registry: ecr
+          image: karaokio/app
+          push: 'true'
+          cache: gha
+
+  deploy:
+    needs: image
+    uses: patrickisgreat/actions-toolkit/.github/workflows/deploy-aws.yml@main
+    with:
+      target: ecs
+      aws-region: us-east-1
+      aws-role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+      cluster: karaokio-prod
+      service: karaokio-app
+      image: ${{ needs.image.outputs.image }}
+    permissions:
+      contents: read
+      id-token: write
