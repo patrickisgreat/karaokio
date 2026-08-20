@@ -19,36 +19,26 @@ risk for a ~70% discount; the queue and processed songs survive on EFS.
 
 ## One-time bootstrap (needs your AWS credentials, once)
 
-Everything after this step authenticates via GitHub OIDC — no long-lived keys.
+CI can't deploy the credential CI uses to deploy — the GitHub OIDC role is
+the trust anchor, and a human creates it exactly once:
 
 ```bash
-brew install awscli && aws configure   # or use CloudShell in the AWS console
-
-git clone https://github.com/patrickisgreat/cloudformation-toolkit
-aws cloudformation deploy \
-  --region us-east-1 \
-  --stack-name karaokio-github-oidc \
-  --template-file cloudformation-toolkit/templates/foundation/github-oidc-role/template.yaml \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides \
-    NamePrefix=karaokio \
-    GitHubOrg=patrickisgreat \
-    GitHubRepo=karaokio \
-    ManagedPolicyArn=arn:aws:iam::aws:policy/PowerUserAccess
-
-# Tell the workflows which role to assume:
-ROLE_ARN=$(aws cloudformation describe-stacks --region us-east-1 \
-  --stack-name karaokio-github-oidc \
-  --query "Stacks[0].Outputs[?OutputKey=='RoleArn'].OutputValue" --output text)
-gh variable set AWS_DEPLOY_ROLE_ARN --body "$ROLE_ARN" -R patrickisgreat/karaokio
+brew install awscli
+aws configure sso        # or `aws configure` with an access key
+AWS_PROFILE=<your-profile> ./infra/bootstrap.sh
 ```
 
-`PowerUserAccess` + the role's built-in CloudFormation permissions is the
-pragmatic single-owner-account choice; note the role also needs IAM
-create/pass permissions for the service roles the stacks define — if a stack
-deploy fails on IAM, attach `IAMFullAccess` too or scope a least-privilege
-policy later. The trust policy restricts the role to `main`-branch workflows
-of this one repo.
+The script deploys the `karaokio-github-oidc` stack (from
+cloudformation-toolkit's `foundation/github-oidc-role`), sets the
+`AWS_DEPLOY_ROLE_ARN` repo variable, and creates a monthly billing budget
+with email alerts.
+
+**After bootstrap the same stack is re-deployed by `infra/deploy.sh` on every
+Infra run** — CI owns its lifecycle from then on, so the role's definition
+lives in code and drift self-heals. The role holds `PowerUserAccess` +
+`IAMFullAccess` (PowerUser deliberately excludes IAM, and the stacks create
+service/task roles), both declared in the stack, and its trust policy accepts
+only `main`-branch workflows of this one repository.
 
 ## Runbook
 
