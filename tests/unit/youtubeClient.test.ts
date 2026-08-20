@@ -17,10 +17,7 @@ interface MockVideo {
 // Configures the youtubedl mock the way the real binary behaves: search
 // invocations (ytsearchN:...) return metadata, download invocations write the
 // output file to disk (into the worker-sandboxed YOUTUBE_VIDEO_DIR).
-const wireYoutubeDl = (
-  searchResults: MockVideo[],
-  options: { failDownloads?: number } = {}
-) => {
+const wireYoutubeDl = (searchResults: MockVideo[], options: { failDownloads?: number } = {}) => {
   let downloadAttempts = 0
   mockYoutubeDl.mockImplementation(async (url: unknown, opts: unknown) => {
     if (String(url).startsWith('ytsearch')) {
@@ -49,9 +46,24 @@ describe('YouTubeClient', () => {
   describe('searchKaraokeVideos', () => {
     test('returns scored and sorted karaoke results', async () => {
       wireYoutubeDl([
-        { id: 'video1', title: 'Bohemian Rhapsody - Queen (Official Karaoke Video)', duration: 355, uploader: 'KaraokeChannel' },
-        { id: 'video2', title: 'Queen - Bohemian Rhapsody Karaoke with Lyrics', duration: 354, uploader: 'LyricsKaraoke' },
-        { id: 'video3', title: 'Bohemian Rhapsody Instrumental Backing Track', duration: 356, uploader: 'BackingTracks' }
+        {
+          id: 'video1',
+          title: 'Bohemian Rhapsody - Queen (Official Karaoke Video)',
+          duration: 355,
+          uploader: 'KaraokeChannel',
+        },
+        {
+          id: 'video2',
+          title: 'Queen - Bohemian Rhapsody Karaoke with Lyrics',
+          duration: 354,
+          uploader: 'LyricsKaraoke',
+        },
+        {
+          id: 'video3',
+          title: 'Bohemian Rhapsody Instrumental Backing Track',
+          duration: 356,
+          uploader: 'BackingTracks',
+        },
       ])
 
       const results = await YouTubeClient.searchKaraokeVideos('Bohemian Rhapsody', 'Queen', 5)
@@ -65,8 +77,18 @@ describe('YouTubeClient', () => {
 
     test('filters out non-karaoke videos', async () => {
       wireYoutubeDl([
-        { id: 'video1', title: 'Queen - Bohemian Rhapsody (Official Music Video)', duration: 355, uploader: 'QueenOfficial' },
-        { id: 'video2', title: 'Bohemian Rhapsody Karaoke Version', duration: 354, uploader: 'KaraokeChannel' }
+        {
+          id: 'video1',
+          title: 'Queen - Bohemian Rhapsody (Official Music Video)',
+          duration: 355,
+          uploader: 'QueenOfficial',
+        },
+        {
+          id: 'video2',
+          title: 'Bohemian Rhapsody Karaoke Version',
+          duration: 354,
+          uploader: 'KaraokeChannel',
+        },
       ])
 
       const results = await YouTubeClient.searchKaraokeVideos('Bohemian Rhapsody', 'Queen')
@@ -85,15 +107,30 @@ describe('YouTubeClient', () => {
 
     test('scores official karaoke above covers', async () => {
       wireYoutubeDl([
-        { id: 'official', title: 'Queen - Bohemian Rhapsody Official Karaoke HD', duration: 355, uploader: 'Official' },
-        { id: 'lyrics', title: 'Bohemian Rhapsody with Lyrics - Queen', duration: 355, uploader: 'LyricsChannel' },
-        { id: 'cover', title: 'Queen - Bohemian Rhapsody Karaoke Cover Live', duration: 355, uploader: 'CoverBand' }
+        {
+          id: 'official',
+          title: 'Queen - Bohemian Rhapsody Official Karaoke HD',
+          duration: 355,
+          uploader: 'Official',
+        },
+        {
+          id: 'lyrics',
+          title: 'Bohemian Rhapsody with Lyrics - Queen',
+          duration: 355,
+          uploader: 'LyricsChannel',
+        },
+        {
+          id: 'cover',
+          title: 'Queen - Bohemian Rhapsody Karaoke Cover Live',
+          duration: 355,
+          uploader: 'CoverBand',
+        },
       ])
 
       const results = await YouTubeClient.searchKaraokeVideos('Bohemian Rhapsody', 'Queen')
 
-      const officialResult = results.find(r => r.video.id === 'official')
-      const coverResult = results.find(r => r.video.id === 'cover')
+      const officialResult = results.find((r) => r.video.id === 'official')
+      const coverResult = results.find((r) => r.video.id === 'cover')
 
       expect(officialResult!.relevanceScore).toBeGreaterThan(coverResult!.relevanceScore)
       expect(officialResult!.isOfficialKaraoke).toBe(true)
@@ -102,7 +139,12 @@ describe('YouTubeClient', () => {
     test('removes duplicate video ids', async () => {
       wireYoutubeDl([
         { id: 'video1', title: 'Bohemian Rhapsody Karaoke', duration: 355, uploader: 'Channel1' },
-        { id: 'video1', title: 'Bohemian Rhapsody Karaoke (Reupload)', duration: 355, uploader: 'Channel2' }
+        {
+          id: 'video1',
+          title: 'Bohemian Rhapsody Karaoke (Reupload)',
+          duration: 355,
+          uploader: 'Channel2',
+        },
       ])
 
       const results = await YouTubeClient.searchKaraokeVideos('Bohemian Rhapsody', 'Queen')
@@ -126,7 +168,7 @@ describe('YouTubeClient', () => {
         expect.objectContaining({
           format: 'best[height<=1080][ext=mp4]/best[ext=mp4]/best',
           writeInfoJson: true,
-          noWarnings: true
+          noWarnings: true,
         })
       )
       expect(result).toMatch(/Queen_Bohemian_Rhapsody_.*\.mp4$/)
@@ -149,10 +191,14 @@ describe('YouTubeClient', () => {
       wireYoutubeDl([])
 
       const result1 = await YouTubeClient.downloadKaraokeVideo(
-        'https://youtube.com/watch?v=test1', 'Song A', 'Artist A'
+        'https://youtube.com/watch?v=test1',
+        'Song A',
+        'Artist A'
       )
       const result2 = await YouTubeClient.downloadKaraokeVideo(
-        'https://youtube.com/watch?v=test2', 'Song B', 'Artist B'
+        'https://youtube.com/watch?v=test2',
+        'Song B',
+        'Artist B'
       )
 
       expect(result1).not.toBeNull()
@@ -164,7 +210,12 @@ describe('YouTubeClient', () => {
   describe('getBestKaraokeVideo', () => {
     test('searches, downloads, and returns the best video', async () => {
       wireYoutubeDl([
-        { id: 'video1', title: 'Bohemian Rhapsody Official Karaoke', duration: 355, uploader: 'KaraokeChannel' }
+        {
+          id: 'video1',
+          title: 'Bohemian Rhapsody Official Karaoke',
+          duration: 355,
+          uploader: 'KaraokeChannel',
+        },
       ])
 
       const result = await YouTubeClient.getBestKaraokeVideo('Bohemian Rhapsody', 'Queen')
@@ -186,7 +237,12 @@ describe('YouTubeClient', () => {
       const { getDownloadAttempts } = wireYoutubeDl(
         [
           { id: 'video1', title: 'Bohemian Rhapsody Karaoke', duration: 355, uploader: 'Channel1' },
-          { id: 'video2', title: 'Bohemian Rhapsody Karaoke Backup', duration: 355, uploader: 'Channel2' }
+          {
+            id: 'video2',
+            title: 'Bohemian Rhapsody Karaoke Backup',
+            duration: 355,
+            uploader: 'Channel2',
+          },
         ],
         { failDownloads: 1 }
       )
@@ -205,7 +261,11 @@ describe('YouTubeClient', () => {
 
     test('cleanup deletes files not in the keep list', () => {
       jest.spyOn(fs, 'existsSync').mockReturnValue(true)
-      jest.spyOn(fs, 'readdirSync').mockReturnValue(['video1.mp4', 'video2.mp4'] as unknown as ReturnType<typeof fs.readdirSync>)
+      jest
+        .spyOn(fs, 'readdirSync')
+        .mockReturnValue(['video1.mp4', 'video2.mp4'] as unknown as ReturnType<
+          typeof fs.readdirSync
+        >)
       const unlinkSpy = jest.spyOn(fs, 'unlinkSync').mockImplementation(() => {})
 
       YouTubeClient.cleanup(['keep-this-video.mp4'])
@@ -218,7 +278,12 @@ describe('YouTubeClient', () => {
   describe('edge cases', () => {
     test('handles titles with special characters', async () => {
       wireYoutubeDl([
-        { id: 'video1', title: "Don't Stop Me Now - Queen (Karaoke)", duration: 355, uploader: 'KaraokeChannel' }
+        {
+          id: 'video1',
+          title: "Don't Stop Me Now - Queen (Karaoke)",
+          duration: 355,
+          uploader: 'KaraokeChannel',
+        },
       ])
 
       const results = await YouTubeClient.searchKaraokeVideos("Don't Stop Me Now", 'Queen')
@@ -238,7 +303,7 @@ describe('YouTubeClient', () => {
     test('filters out malformed video entries', async () => {
       wireYoutubeDl([
         { duration: 355 }, // missing id/title
-        { id: 'video2', title: 'Test Song Karaoke Video', duration: 355, uploader: 'Channel' }
+        { id: 'video2', title: 'Test Song Karaoke Video', duration: 355, uploader: 'Channel' },
       ])
 
       const results = await YouTubeClient.searchKaraokeVideos('Test Song', 'Test Artist')

@@ -7,7 +7,9 @@ import TorrentSearchApi from 'torrent-search-api'
 
 // Both imports resolve to configurable stubs via jest.config.js moduleNameMapper.
 const mockWebTorrent = WebTorrent as unknown as jest.Mock
-const mockSearch = TorrentSearchApi.search as unknown as jest.Mock<(...args: unknown[]) => Promise<unknown>>
+const mockSearch = TorrentSearchApi.search as unknown as jest.Mock<
+  (...args: unknown[]) => Promise<unknown>
+>
 
 interface MockTorrentFile {
   name: string
@@ -31,13 +33,13 @@ const searchResult = (overrides: Record<string, unknown> = {}) => ({
   desc: '',
   magnet: 'magnet:?xt=urn:btih:test',
   provider: '1337x',
-  ...overrides
+  ...overrides,
 })
 
 const audioFile = (name: string, length: number): MockTorrentFile => ({
   name,
   length,
-  createReadStream: jest.fn()
+  createReadStream: jest.fn(),
 })
 
 const makeTorrent = (files: MockTorrentFile[]): MockTorrent => ({
@@ -45,13 +47,13 @@ const makeTorrent = (files: MockTorrentFile[]): MockTorrent => ({
   files,
   downloaded: 0,
   length: files.reduce((sum, f) => sum + f.length, 0),
-  destroy: jest.fn()
+  destroy: jest.fn(),
 })
 
 describe('TorrentClient', () => {
   const mockClient = {
     add: jest.fn(),
-    destroy: jest.fn()
+    destroy: jest.fn(),
   }
 
   beforeEach(() => {
@@ -73,7 +75,7 @@ describe('TorrentClient', () => {
       pipe: jest.fn(() => {
         setImmediate(() => writeStream.emit('finish'))
         return writeStream
-      })
+      }),
     })
 
     mockClient.add.mockImplementation((_magnet, _options, callback) => {
@@ -86,7 +88,12 @@ describe('TorrentClient', () => {
     test('maps provider results into TorrentResult shape', async () => {
       mockSearch.mockResolvedValue([
         searchResult(),
-        searchResult({ title: 'Queen Greatest Hits', seeds: 15, magnet: 'magnet:2', provider: 'ThePirateBay' })
+        searchResult({
+          title: 'Queen Greatest Hits',
+          seeds: 15,
+          magnet: 'magnet:2',
+          provider: 'ThePirateBay',
+        }),
       ])
 
       const results = await TorrentClient.searchTorrents('Queen Bohemian Rhapsody', 10)
@@ -98,7 +105,7 @@ describe('TorrentClient', () => {
         size: '5.2MB',
         seeders: 42,
         magnet: 'magnet:?xt=urn:btih:test',
-        provider: '1337x'
+        provider: '1337x',
       })
     })
 
@@ -139,9 +146,9 @@ describe('TorrentClient', () => {
         return torrent
       })
 
-      await expect(
-        TorrentClient.downloadAudio('magnet:test', 'Test')
-      ).rejects.toThrow('No audio files found in torrent')
+      await expect(TorrentClient.downloadAudio('magnet:test', 'Test')).rejects.toThrow(
+        'No audio files found in torrent'
+      )
     })
 
     test('rejects with a timeout when the torrent never becomes ready', async () => {
@@ -157,7 +164,7 @@ describe('TorrentClient', () => {
       const torrent = makeTorrent([
         audioFile('small-preview.mp3', 1_000_000),
         audioFile('full-song.mp3', 5_000_000),
-        audioFile('medium-quality.wav', 3_000_000)
+        audioFile('medium-quality.wav', 3_000_000),
       ])
       wireSuccessfulDownload(torrent, 1)
 
@@ -172,9 +179,13 @@ describe('TorrentClient', () => {
   describe('findBestMatch', () => {
     test('returns the highest-seeded result matching both artist and title', async () => {
       mockSearch.mockResolvedValue([
-        searchResult({ title: 'Queen - Bohemian Rhapsody [1975] FLAC', seeds: 50, magnet: 'magnet:best' }),
+        searchResult({
+          title: 'Queen - Bohemian Rhapsody [1975] FLAC',
+          seeds: 50,
+          magnet: 'magnet:best',
+        }),
         searchResult({ title: 'Queen Bohemian Rhapsody MP3', seeds: 25, magnet: 'magnet:ok' }),
-        searchResult({ title: 'Random Song', seeds: 100, magnet: 'magnet:wrong' })
+        searchResult({ title: 'Random Song', seeds: 100, magnet: 'magnet:wrong' }),
       ])
 
       const result = await TorrentClient.findBestMatch('Bohemian Rhapsody', 'Queen', 5)
@@ -185,7 +196,9 @@ describe('TorrentClient', () => {
     })
 
     test('returns null when no result matches the song', async () => {
-      mockSearch.mockResolvedValue([searchResult({ title: 'Completely Different Song', seeds: 50 })])
+      mockSearch.mockResolvedValue([
+        searchResult({ title: 'Completely Different Song', seeds: 50 }),
+      ])
 
       const result = await TorrentClient.findBestMatch('Bohemian Rhapsody', 'Queen', 5)
 
@@ -203,8 +216,9 @@ describe('TorrentClient', () => {
     test('tries multiple query variations until one matches', async () => {
       mockSearch
         .mockResolvedValueOnce([]) // "Queen Bohemian Rhapsody"
-        .mockResolvedValueOnce([   // "Bohemian Rhapsody Queen"
-          searchResult({ title: 'Bohemian Rhapsody - Queen', seeds: 30, magnet: 'magnet:found' })
+        .mockResolvedValueOnce([
+          // "Bohemian Rhapsody Queen"
+          searchResult({ title: 'Bohemian Rhapsody - Queen', seeds: 30, magnet: 'magnet:found' }),
         ])
 
       const result = await TorrentClient.findBestMatch('Bohemian Rhapsody', 'Queen', 5)

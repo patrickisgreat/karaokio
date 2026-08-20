@@ -8,8 +8,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       current,
-      queue: queue.filter(song => song.status !== 'playing'),
-      total: queue.length
+      queue: queue.filter((song) => song.status !== 'playing'),
+      total: queue.length,
     })
   } catch (error) {
     console.error('Get queue failed:', error)

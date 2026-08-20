@@ -10,7 +10,7 @@ export default function AddSongForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!userName.trim() || !searchQuery.trim()) return
-    
+
     setIsSubmitting(true)
     // TODO: Add song to queue
     console.log('Adding song:', { userName, searchQuery })
@@ -23,9 +23,7 @@ export default function AddSongForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Your Name
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Your Name</label>
         <input
           type="text"
           value={userName}
@@ -37,9 +35,7 @@ export default function AddSongForm() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Song Request
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Song Request</label>
         <input
           type="text"
           value={searchQuery}
@@ -77,7 +73,8 @@ export default function AddSongForm() {
       </button>
 
       <div className="text-xs text-gray-500 text-center">
-        Your song will be processed and added to the queue. Processing time varies by quality setting.
+        Your song will be processed and added to the queue. Processing time varies by quality
+        setting.
       </div>
     </form>
   )

@@ -6,12 +6,12 @@ server.
 
 ## 1. System dependencies
 
-| Tool   | Required?   | What it enables                                        |
-| ------ | ----------- | ------------------------------------------------------ |
-| Node   | required    | the app itself (version pinned in `.nvmrc`)            |
-| ffmpeg | required    | all audio/video processing, plus "fast" vocal removal  |
-| yt-dlp | recommended | YouTube audio + karaoke video download                 |
-| demucs | recommended | high-quality AI vocal separation (`high`/`balanced`)   |
+| Tool   | Required?   | What it enables                                       |
+| ------ | ----------- | ----------------------------------------------------- |
+| Node   | required    | the app itself (version pinned in `.nvmrc`)           |
+| ffmpeg | required    | all audio/video processing, plus "fast" vocal removal |
+| yt-dlp | recommended | YouTube audio + karaoke video download                |
+| demucs | recommended | high-quality AI vocal separation (`high`/`balanced`)  |
 
 **macOS:**
 

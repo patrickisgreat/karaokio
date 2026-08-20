@@ -14,7 +14,7 @@ export class AudioProcessor {
 
   static {
     // Ensure directories exist
-    [this.TEMP_DIR, this.OUTPUT_DIR].forEach(dir => {
+    ;[this.TEMP_DIR, this.OUTPUT_DIR].forEach((dir) => {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true })
       }
@@ -22,7 +22,7 @@ export class AudioProcessor {
   }
 
   static async separateVocals(
-    inputPath: string, 
+    inputPath: string,
     options: ProcessingOptions,
     onProgress?: (progress: number) => void
   ): Promise<{ instrumental: string; vocals: string }> {
@@ -51,24 +51,26 @@ export class AudioProcessor {
   }
 
   private static async processWithDemucs(
-    inputPath: string, 
-    outputDir: string, 
+    inputPath: string,
+    outputDir: string,
     options: ProcessingOptions,
     onProgress?: (progress: number) => void
   ): Promise<{ instrumental: string; vocals: string }> {
     return new Promise((resolve, reject) => {
       // Demucs command: python -m demucs.separate --two-stems=vocals input.wav
       const process = spawn('python', [
-        '-m', 'demucs.separate',
+        '-m',
+        'demucs.separate',
         '--two-stems=vocals',
-        '--out', outputDir,
-        inputPath
+        '--out',
+        outputDir,
+        inputPath,
       ])
 
       let progress = 0
       process.stderr.on('data', (data) => {
         const output = data.toString()
-        
+
         // Parse progress from Demucs output
         const progressMatch = output.match(/(\d+)%/)
         if (progressMatch) {
@@ -81,10 +83,10 @@ export class AudioProcessor {
         if (code === 0) {
           const songName = path.parse(inputPath).name
           const resultDir = path.join(outputDir, 'htdemucs', songName)
-          
+
           resolve({
             instrumental: path.join(resultDir, 'no_vocals.wav'),
-            vocals: path.join(resultDir, 'vocals.wav')
+            vocals: path.join(resultDir, 'vocals.wav'),
           })
         } else {
           reject(new Error(`Demucs failed with exit code ${code}`))
@@ -121,7 +123,7 @@ export class AudioProcessor {
 
   static async convertToFormat(inputPath: string, outputFormat: string): Promise<string> {
     const outputPath = inputPath.replace(path.extname(inputPath), `.${outputFormat}`)
-    
+
     return new Promise((resolve, reject) => {
       ffmpeg(inputPath)
         .toFormat(outputFormat)
@@ -133,7 +135,7 @@ export class AudioProcessor {
   }
 
   static cleanup(filePaths: string[]) {
-    filePaths.forEach(filePath => {
+    filePaths.forEach((filePath) => {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath)
       }

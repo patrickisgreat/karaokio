@@ -11,10 +11,10 @@ export default function SearchInterface() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!searchQuery.trim()) return
-    
+
     setIsSearching(true)
     setMessage('')
-    
+
     try {
       const response = await fetch('/api/queue/add', {
         method: 'POST',
@@ -25,12 +25,12 @@ export default function SearchInterface() {
           searchQuery: searchQuery.trim(),
           userName: userName || 'Anonymous',
           processingQuality: 'balanced',
-          outputFormat: 'wav'
+          outputFormat: 'wav',
         }),
       })
 
       const result = await response.json()
-      
+
       if (result.success) {
         setMessage(`✅ "${searchQuery}" added to queue! Processing will begin automatically.`)
         setSearchQuery('')
@@ -66,7 +66,7 @@ export default function SearchInterface() {
                 {isSearching ? 'Adding...' : 'Add to Queue'}
               </button>
             </div>
-            
+
             <div>
               <input
                 type="text"
@@ -81,11 +81,13 @@ export default function SearchInterface() {
         </form>
 
         {message && (
-          <div className={`mb-6 p-4 rounded-lg ${
-            message.includes('✅') 
-              ? 'bg-green-100 text-green-800 border border-green-200' 
-              : 'bg-red-100 text-red-800 border border-red-200'
-          }`}>
+          <div
+            className={`mb-6 p-4 rounded-lg ${
+              message.includes('✅')
+                ? 'bg-green-100 text-green-800 border border-green-200'
+                : 'bg-red-100 text-red-800 border border-red-200'
+            }`}
+          >
             {message}
           </div>
         )}

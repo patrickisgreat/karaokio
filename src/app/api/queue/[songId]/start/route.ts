@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { KaraokeDB } from '@/lib/database'
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { songId: string } }
-) {
+export async function POST(request: NextRequest, { params }: { params: { songId: string } }) {
   try {
     const { songId } = params
 
@@ -19,10 +16,13 @@ export async function POST(
     }
 
     if (song.status !== 'ready') {
-      return NextResponse.json({ 
-        error: 'Song is not ready to play',
-        status: song.status 
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: 'Song is not ready to play',
+          status: song.status,
+        },
+        { status: 400 }
+      )
     }
 
     // Mark current song as complete and set this song as playing
@@ -33,11 +33,10 @@ export async function POST(
 
     KaraokeDB.updateSongStatus(songId, 'playing')
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
-      message: 'Song started' 
+      message: 'Song started',
     })
-
   } catch (error) {
     console.error('Start song failed:', error)
     return NextResponse.json({ error: 'Failed to start song' }, { status: 500 })

@@ -9,11 +9,7 @@ export const metadata: Metadata = {
   description: 'Transform any song into karaoke with AI vocal separation and synchronized lyrics',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className={inter.className}>{children}</body>
