@@ -1,4 +1,5 @@
 import ffmpeg from 'fluent-ffmpeg'
+import { resolveDataPath } from './paths'
 import path from 'path'
 import fs from 'fs'
 
@@ -34,7 +35,7 @@ export class VideoGenerator {
     options: Partial<VideoOptions> = {}
   ): Promise<string> {
     const opts = { ...this.DEFAULT_OPTIONS, ...options }
-    const tempDir = path.join(process.cwd(), 'temp', 'video')
+    const tempDir = path.join(resolveDataPath('TEMP_DIR', 'temp'), 'video')
 
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true })
@@ -145,7 +146,7 @@ export class VideoGenerator {
     duration: number,
     outputPath: string
   ): Promise<string> {
-    const tempDir = path.join(process.cwd(), 'temp', 'lyrics')
+    const tempDir = path.join(resolveDataPath('TEMP_DIR', 'temp'), 'lyrics')
 
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true })

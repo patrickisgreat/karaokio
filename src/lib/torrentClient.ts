@@ -1,4 +1,5 @@
 import WebTorrent from 'webtorrent'
+import { resolveDataPath } from './paths'
 import TorrentSearchApi from 'torrent-search-api'
 import path from 'path'
 import fs from 'fs'
@@ -14,8 +15,7 @@ export interface TorrentResult {
 
 export class TorrentClient {
   private static client: WebTorrent.Instance | null = null
-  private static readonly DOWNLOAD_DIR =
-    process.env.DOWNLOAD_DIR || path.join(process.cwd(), 'downloads')
+  private static readonly DOWNLOAD_DIR = resolveDataPath('DOWNLOAD_DIR', 'downloads')
   private static readonly DEFAULT_DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000
 
   static {
