@@ -69,3 +69,5 @@ karaoke.db-*
 
 # Torrent files
 *.torrent
+# Test worker sandboxes
+tests/.worker-*
