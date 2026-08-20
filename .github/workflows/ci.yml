@@ -1,0 +1,117 @@
+# Modelled on threaditate's ci.yml, adapted for npm. The e2e jobs from that
+# pipeline are intentionally absent — karaokio has no Playwright suite yet
+# (ROADMAP Phase 4); add smoke/full jobs here when it lands.
+name: CI
+
+on:
+  # Only push to main triggers CI. Feature branches are validated via the
+  # pull_request event — firing both events would run the pipeline twice
+  # for the same commit.
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+# Cancel superseded runs for the same ref so rapid pushes don't each run a
+# full pipeline. Main is exempt — every merge there should be validated.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  lint-and-format:
+    name: Lint, Format, Types
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          if [ "${{ github.actor }}" = "dependabot[bot]" ]; then
+            npm install --no-audit
+          else
+            npm ci
+          fi
+
+      - name: Format code
+        run: npm run format
+
+      - name: Fail if formatting changed files
+        # Exclude package-lock.json: dependabot installs can regenerate it,
+        # which has nothing to do with whether code was formatted.
+        run: |
+          changed=$(git diff --name-only -- . ':!package-lock.json')
+          if [ -n "$changed" ]; then
+            echo "::error::Files were not formatted. Run 'npm run format' locally."
+            echo "$changed"
+            exit 1
+          fi
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run type-check
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          if [ "${{ github.actor }}" = "dependabot[bot]" ]; then
+            npm install --no-audit
+          else
+            npm ci
+          fi
+
+      - name: Run unit tests with coverage
+        run: npm run test:ci
+        env:
+          NODE_ENV: test
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [lint-and-format, unit-tests]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          if [ "${{ github.actor }}" = "dependabot[bot]" ]; then
+            npm install --no-audit
+          else
+            npm ci
+          fi
+
+      - name: Build
+        run: npm run build
