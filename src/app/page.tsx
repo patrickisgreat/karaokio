@@ -1,5 +1,6 @@
 import QueueInterface from '@/components/QueueInterface'
 import CurrentSong from '@/components/CurrentSong'
+import PartyBanner from '@/components/PartyBanner'
 
 export default function Home() {
   return (
@@ -13,6 +14,8 @@ export default function Home() {
             AI-powered karaoke queue - Add your songs, wait your turn, and sing!
           </p>
         </div>
+
+        <PartyBanner />
 
         <div className="grid lg:grid-cols-2 gap-8">
           <CurrentSong />

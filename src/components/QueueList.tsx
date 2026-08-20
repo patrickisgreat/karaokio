@@ -1,5 +1,6 @@
 'use client'
 
+import { redirectIfUnauthed } from '@/lib/clientAuth'
 import { useState, useEffect } from 'react'
 
 interface QueueItem {
@@ -23,6 +24,7 @@ export default function QueueList() {
     try {
       setLoading(true)
       const response = await fetch('/api/queue')
+      if (redirectIfUnauthed(response)) return
       const data = await response.json()
 
       if (response.ok) {

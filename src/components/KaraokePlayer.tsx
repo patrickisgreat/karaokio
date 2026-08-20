@@ -1,5 +1,6 @@
 'use client'
 
+import { redirectIfUnauthed } from '@/lib/clientAuth'
 import { useState, useRef, useEffect } from 'react'
 
 interface KaraokePlayerProps {
@@ -32,6 +33,7 @@ export default function KaraokePlayer({ songId }: KaraokePlayerProps) {
       try {
         setLoading(true)
         const response = await fetch(`/api/songs/${songId}`)
+        if (redirectIfUnauthed(response)) return
         const data = await response.json()
 
         if (response.ok) {

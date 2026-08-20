@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { v4 as uuidv4 } from 'uuid'
 import { KaraokeDB } from '@/lib/database'
+import { requireParty } from '@/lib/partyAuth'
 import { QueuedSong, User } from '@/types/queue'
 
 const AVATAR_COLORS = [
@@ -15,20 +16,24 @@ const AVATAR_COLORS = [
 ]
 
 export async function POST(request: NextRequest) {
+  const auth = requireParty(request)
+  if ('error' in auth) return auth.error
+
   try {
     const body = await request.json()
-    const { userName, searchQuery, processingQuality, outputFormat } = body
+    const { searchQuery, processingQuality, outputFormat } = body
 
-    if (!userName || !searchQuery) {
+    if (!searchQuery) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Create or get user
+    // The singer is whoever the session says they are — the verified name
+    // from the join flow, never a client-supplied field.
     const userId = uuidv4()
     const userColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)]
     const user: User = {
       id: userId,
-      name: userName.trim(),
+      name: auth.session.name,
       color: userColor,
     }
 
