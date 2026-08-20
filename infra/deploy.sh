@@ -51,6 +51,16 @@ stack_exists() {
 
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
+# 0. The deploy role's own stack. Created once by infra/bootstrap.sh with
+#    human credentials (CI can't create the credential CI runs as); from then
+#    on every Infra run re-deploys it, so its definition lives here and drift
+#    self-heals. The role can update its own stack: it holds IAMFullAccess.
+deploy "$PREFIX-github-oidc" "$TEMPLATES/foundation/github-oidc-role/template.yaml" \
+  "NamePrefix=$PREFIX" \
+  "GitHubOrg=patrickisgreat" "GitHubRepo=karaokio" \
+  "ManagedPolicyArn=arn:aws:iam::aws:policy/PowerUserAccess" \
+  "ManagedPolicyArn2=arn:aws:iam::aws:policy/IAMFullAccess"
+
 # 1. Network — public subnets only, no NAT (tasks get public IPs instead)
 deploy "$PREFIX-vpc" "$TEMPLATES/foundation/vpc/template.yaml" \
   "NamePrefix=$PREFIX" "Environment=$ENVIRONMENT" \
