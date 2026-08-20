@@ -94,7 +94,7 @@ CLUSTER_NAME=$(output "$PREFIX-cluster" ClusterName)
 deploy "$PREFIX-secret-hostpin" "$TEMPLATES/foundation/secret/template.yaml" \
   "NamePrefix=$PREFIX" "Environment=$ENVIRONMENT" "SecretSuffix=host-pin" \
   "SecretDescription=Karaokio host PIN - unlocks host controls in the app" \
-  "SecretStringTemplate=" "PasswordLength=8"
+  "SecretStringTemplate=" "PasswordLength=16"
 
 deploy "$PREFIX-secret-session" "$TEMPLATES/foundation/secret/template.yaml" \
   "NamePrefix=$PREFIX" "Environment=$ENVIRONMENT" "SecretSuffix=session-secret" \
