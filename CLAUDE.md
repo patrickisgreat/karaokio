@@ -23,7 +23,7 @@ Karaokio is a self-hosted karaoke machine for house parties. Guests add songs to
 
 3. **Every external service is optional and fails soft.** The full pipeline must work with **zero API keys** (keyless sources: LRCLIB, MusicBrainz, yt-dlp). Keys in `.env.local` unlock better sources; their absence must never crash a stage. Wrap every external call in a timeout + catch that falls through to the next source.
 
-4. **Everything runs locally.** Audio processing, alignment, and video rendering happen on the host machine via spawned tools (ffmpeg, demucs, yt-dlp). Don't introduce runtime cloud dependencies for the core pipeline — a party with no internet should still play anything already cached or uploaded.
+4. **One box, spun up on demand.** Audio processing, alignment, and video rendering happen on a single machine via spawned tools (ffmpeg, demucs, yt-dlp) — the host's laptop in dev, or the AWS "party box" (a scale-to-zero Fargate task, see `infra/README.md`) for parties. Don't split the pipeline across managed cloud services, and don't add anything that bills while nobody is singing: the box must cost ~nothing when idle. All persistent state lives under `DATA_ROOT` (the EFS mount in AWS) via `src/lib/paths.ts` — new code never invents its own path resolution.
 
 5. **Acquisition is host-supplied first.** Priority order: user uploads / local library → yt-dlp audio download → torrents (config-gated, **off by default**). This is a private tool for personal use at the host's home; keep it that way.
 
@@ -157,7 +157,7 @@ No PR merges without tests covering the behavior it introduces or changes. If it
 - Never commit secrets; `.env.local` is gitignored — keep it that way.
 - Validate uploads (type, size) and sanitize anything interpolated into shell/ffmpeg arguments — song titles are user input and ffmpeg filter strings are an injection surface. Prefer argument arrays over string-built commands.
 - The media route must resolve paths against the known media directories only (no `../` traversal) — it's the one endpoint that serves files from disk.
-- LAN-only trust model: no auth by design, so never expose the server to the public internet, and don't build features that assume it is.
+- Trust model: **party-code auth, no user accounts.** Guests join with a per-party code (rotated every party-up; QR on the big screen embeds it) and get a signed session cookie; a separate host PIN gates destructive controls (skip, remove, reorder, shutdown). Never add real accounts, and never expose an unauthenticated API route — every route except the join flow checks the session.
 
 ## PR Description Template
 

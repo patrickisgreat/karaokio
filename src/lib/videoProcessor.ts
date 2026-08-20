@@ -1,4 +1,5 @@
 import ffmpeg from 'fluent-ffmpeg'
+import { resolveDataPath } from './paths'
 import path from 'path'
 import fs from 'fs'
 
@@ -11,7 +12,10 @@ export interface AudioSyncOptions {
 }
 
 export class VideoProcessor {
-  private static readonly TEMP_DIR = path.join(process.cwd(), 'temp', 'video_processing')
+  private static readonly TEMP_DIR = path.join(
+    resolveDataPath('TEMP_DIR', 'temp'),
+    'video_processing'
+  )
 
   static {
     if (!fs.existsSync(this.TEMP_DIR)) {

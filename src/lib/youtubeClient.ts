@@ -1,4 +1,5 @@
 import youtubedl from 'youtube-dl-exec'
+import { resolveDataPath } from './paths'
 import path from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
@@ -20,8 +21,7 @@ export interface KaraokeSearchResult {
 }
 
 export class YouTubeClient {
-  private static readonly DOWNLOAD_DIR =
-    process.env.YOUTUBE_VIDEO_DIR || path.join(process.cwd(), 'youtube_videos')
+  private static readonly DOWNLOAD_DIR = resolveDataPath('YOUTUBE_VIDEO_DIR', 'youtube_videos')
   private static readonly MAX_DURATION = 600 // 10 minutes max
 
   static {

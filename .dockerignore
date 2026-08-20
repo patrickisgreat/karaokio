@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+coverage
+tests
+uploads
+downloads
+cache
+output
+temp
+youtube_videos
+karaoke.db*
+.env*
+infra
+docs
+*.md

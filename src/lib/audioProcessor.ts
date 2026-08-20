@@ -1,4 +1,5 @@
 import { spawn } from 'child_process'
+import { resolveDataPath } from './paths'
 import path from 'path'
 import fs from 'fs'
 import ffmpeg from 'fluent-ffmpeg'
@@ -9,8 +10,8 @@ export interface ProcessingOptions {
 }
 
 export class AudioProcessor {
-  private static readonly TEMP_DIR = process.env.TEMP_DIR || path.join(process.cwd(), 'temp')
-  private static readonly OUTPUT_DIR = process.env.OUTPUT_DIR || path.join(process.cwd(), 'output')
+  private static readonly TEMP_DIR = resolveDataPath('TEMP_DIR', 'temp')
+  private static readonly OUTPUT_DIR = resolveDataPath('OUTPUT_DIR', 'output')
 
   static {
     // Ensure directories exist

@@ -1,4 +1,5 @@
 import * as crypto from 'crypto'
+import { resolveDataPath } from './paths'
 import * as fs from 'fs'
 import * as path from 'path'
 import db from './database'
@@ -36,7 +37,7 @@ export interface ProcessedSong {
 }
 
 export class CacheManager {
-  private static readonly CACHE_DIR = process.env.CACHE_DIR || path.join(process.cwd(), 'cache')
+  private static readonly CACHE_DIR = resolveDataPath('CACHE_DIR', 'cache')
 
   static {
     // Ensure cache directory exists

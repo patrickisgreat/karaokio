@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveDataPath } from '@/lib/paths'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 import { v4 as uuidv4 } from 'uuid'
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create upload directory
-    const uploadDir = path.join(process.cwd(), 'uploads')
+    const uploadDir = resolveDataPath('UPLOAD_DIR', 'uploads')
     try {
       await mkdir(uploadDir, { recursive: true })
     } catch (error) {

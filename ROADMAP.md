@@ -39,6 +39,28 @@ _Everything compiles, the test suite is fast and green, and a fresh clone can ge
 - [x] `npm audit fix` (55 → 37 vulns), removed unused deps (`node-cron`, `multer`, `ws`), pinned `.nvmrc` to 22. Remaining 37 vulns are all transitive via `torrent-search-api` (deprecated `request` — the 2 criticals), `webtorrent`, and Next 14 — need breaking upgrades or dependency swaps, tracked for Phase 4.
 - [x] Rewrite SETUP.md against a genuinely fresh machine.
 
+## Phase 0.5 — Party-code auth + the AWS party box
+
+_The app is internet-deployable: guests authenticate with a per-party code, and the whole thing runs as a scale-to-zero Fargate task that costs ~nothing while idle._
+
+Infra rails (branch `feat/aws-party-box`; templates contributed to cloudformation-toolkit PR #2):
+
+- [x] `data/efs-filesystem` template + EFS volume support in `containers/fargate-service` (cloudformation-toolkit contribution).
+- [x] Dockerfile: node + ffmpeg + yt-dlp + CPU Demucs with baked htdemucs weights; runs as uid 1000 to match the EFS access point.
+- [x] `DATA_ROOT` path resolution (`src/lib/paths.ts`) so one env var relocates all state onto the EFS mount.
+- [x] `infra/deploy.sh` + Infra workflow: vpc (public-only, **no NAT**), ecr, cluster (pure Fargate **Spot**), service (no ALB, public IP, `DesiredCount=0`), ingress, efs — in order, idempotent.
+- [x] **Party Up 🎤 / Party Down 🌙** workflows: the on/off switch, runnable from the GitHub mobile app; party-up prints the URL and pins autoscaling min=1 so a mid-party lull can't scale the box away.
+- [x] Deploy App workflow: image build/push (actions-toolkit `docker-build-push`) + ECS roll (actions-toolkit `deploy-aws.yml`, `target: ecs`).
+- [ ] One-time bootstrap by the user: OIDC role stack + `AWS_DEPLOY_ROLE_ARN` repo variable (see `infra/README.md`).
+- [ ] Cut actions-toolkit `v1` and repin the `@main` references.
+
+Auth (required before the box is left publicly reachable — the ingress default is `0.0.0.0/0` on the assumption this exists):
+
+- [ ] Party session model: per-party code generated at boot (or set via env), signed HttpOnly session cookie (`PARTY_SESSION_SECRET`), join page (name + code), middleware on every API route except join/health.
+- [ ] Host PIN (`HOST_PIN` env) gating skip/remove/reorder/complete and any admin surface.
+- [ ] Big-screen QR code embedding the join URL + code; party code visible on the player screen.
+- [ ] Unit tests: session sign/verify, route protection, host-gate; integration test for the join flow.
+
 ## Phase 1 — One song, end to end (the vertical slice)
 
 _Add "Bohemian Rhapsody" from an uploaded MP3, watch progress reach 100%, click Start Singing, and hear the instrumental with lyrics on screen. Everything else is negotiable; this is not._

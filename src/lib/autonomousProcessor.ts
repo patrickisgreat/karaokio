@@ -1,4 +1,5 @@
 import { KaraokeDB } from './database'
+import { resolveDataPath } from './paths'
 import { AudioProcessor, ProcessingOptions } from './audioProcessor'
 import { VideoProcessor } from './videoProcessor'
 import { LyricsProcessor } from './lyricsProcessor'
@@ -266,7 +267,7 @@ export async function processKaraokeSong(
 }
 
 async function checkUploadsDirectory(title: string, artist: string): Promise<string | null> {
-  const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads')
+  const uploadDir = resolveDataPath('UPLOAD_DIR', 'uploads')
   if (!fs.existsSync(uploadDir)) return null
 
   const possibleFiles = [
