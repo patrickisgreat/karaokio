@@ -14,7 +14,8 @@ export interface TorrentResult {
 
 export class TorrentClient {
   private static client: WebTorrent.Instance | null = null
-  private static readonly DOWNLOAD_DIR = path.join(process.cwd(), 'downloads')
+  private static readonly DOWNLOAD_DIR = process.env.DOWNLOAD_DIR || path.join(process.cwd(), 'downloads')
+  private static readonly DEFAULT_DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000
 
   static {
     // Ensure download directory exists
@@ -56,16 +57,38 @@ export class TorrentClient {
   }
 
   static async downloadAudio(
-    magnet: string, 
+    magnet: string,
     targetTitle: string,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
+    timeoutMs: number = TorrentClient.DEFAULT_DOWNLOAD_TIMEOUT_MS
   ): Promise<string | null> {
     return new Promise((resolve, reject) => {
       const client = this.getClient()
-      
+
       console.log(`Starting torrent download: ${targetTitle}`)
-      
+
+      let settled = false
+      let activeTorrent: { destroy: () => void } | null = null
+      let progressInterval: ReturnType<typeof setInterval> | null = null
+
+      const finish = (action: () => void) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeoutHandle)
+        if (progressInterval) clearInterval(progressInterval)
+        activeTorrent?.destroy()
+        action()
+      }
+
+      // The timeout must start immediately: a torrent with no seeders may
+      // never become ready, so waiting to arm it inside the callback would
+      // hang this promise forever.
+      const timeoutHandle = setTimeout(() => {
+        finish(() => reject(new Error('Download timeout')))
+      }, timeoutMs)
+
       client.add(magnet, { path: this.DOWNLOAD_DIR }, (torrent) => {
+        activeTorrent = torrent
         console.log(`Torrent added: ${torrent.name}`)
         
         // Find audio files in the torrent
@@ -74,8 +97,7 @@ export class TorrentClient {
         )
         
         if (audioFiles.length === 0) {
-          torrent.destroy()
-          return reject(new Error('No audio files found in torrent'))
+          return finish(() => reject(new Error('No audio files found in torrent')))
         }
 
         // Pick the largest audio file (usually the best quality)
@@ -92,13 +114,9 @@ export class TorrentClient {
         const outputPath = path.join(this.DOWNLOAD_DIR, outputFilename)
 
         // Track download progress
-        const progressInterval = setInterval(() => {
+        progressInterval = setInterval(() => {
           const progress = Math.round((torrent.downloaded / torrent.length) * 100)
           onProgress?.(progress)
-          
-          if (progress >= 100) {
-            clearInterval(progressInterval)
-          }
         }, 1000)
 
         // Start downloading the specific file
@@ -108,27 +126,13 @@ export class TorrentClient {
         stream.pipe(writeStream)
         
         writeStream.on('finish', () => {
-          clearInterval(progressInterval)
           console.log(`Download complete: ${outputPath}`)
-          
-          // Clean up torrent
-          torrent.destroy()
-          
-          resolve(outputPath)
+          finish(() => resolve(outputPath))
         })
 
         writeStream.on('error', (error) => {
-          clearInterval(progressInterval)
-          torrent.destroy()
-          reject(error)
+          finish(() => reject(error))
         })
-
-        // Timeout after 10 minutes
-        setTimeout(() => {
-          clearInterval(progressInterval)
-          torrent.destroy()
-          reject(new Error('Download timeout'))
-        }, 10 * 60 * 1000)
       })
     })
   }
