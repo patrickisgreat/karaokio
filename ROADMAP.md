@@ -56,10 +56,10 @@ Infra rails (branch `feat/aws-party-box`; templates contributed to cloudformatio
 
 Auth (required before the box is left publicly reachable — the ingress default is `0.0.0.0/0` on the assumption this exists):
 
-- [ ] Party session model: per-party code generated at boot (or set via env), signed HttpOnly session cookie (`PARTY_SESSION_SECRET`), join page (name + code), middleware on every API route except join/health.
-- [ ] Host PIN (`HOST_PIN` env) gating skip/remove/reorder/complete and any admin surface.
-- [ ] Big-screen QR code embedding the join URL + code; party code visible on the player screen.
-- [ ] Unit tests: session sign/verify, route protection, host-gate; integration test for the join flow.
+- [x] Party session model: per-party code persisted in SQLite (or set via `PARTY_CODE`), signed HttpOnly session cookie, join page (name + code), and a `requireParty` guard on every API route except join/status. (Per-route guards rather than Next middleware: the edge runtime can't reach better-sqlite3, and explicit guards are individually testable.)
+- [x] Host PIN (`HOST_PIN` env) gating skip/remove/reorder/complete and any admin surface.
+- [x] Big-screen QR code embedding the join URL + code; party code visible on the player screen.
+- [x] Unit tests: session sign/verify, route protection, host-gate; integration test for the join flow.
 
 ## Phase 1 — One song, end to end (the vertical slice)
 
