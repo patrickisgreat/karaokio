@@ -1,67 +1,97 @@
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals'
-
-// Mock WebTorrent and TorrentSearchApi BEFORE importing TorrentClient
-jest.mock('webtorrent')
-jest.mock('torrent-search-api')
-
+import { EventEmitter } from 'events'
+import fs from 'fs'
 import { TorrentClient } from '@/lib/torrentClient'
 import WebTorrent from 'webtorrent'
 import TorrentSearchApi from 'torrent-search-api'
 
-const MockedWebTorrent = WebTorrent as jest.MockedClass<typeof WebTorrent>
-const MockedTorrentSearchApi = TorrentSearchApi as jest.Mocked<typeof TorrentSearchApi>
+// Both imports resolve to configurable stubs via jest.config.js moduleNameMapper.
+const mockWebTorrent = WebTorrent as unknown as jest.Mock
+const mockSearch = TorrentSearchApi.search as unknown as jest.Mock<(...args: unknown[]) => Promise<unknown>>
+
+interface MockTorrentFile {
+  name: string
+  length: number
+  createReadStream: jest.Mock
+}
+
+interface MockTorrent {
+  name: string
+  files: MockTorrentFile[]
+  downloaded: number
+  length: number
+  destroy: jest.Mock
+}
+
+const searchResult = (overrides: Record<string, unknown> = {}) => ({
+  title: 'Queen - Bohemian Rhapsody (1975) [FLAC]',
+  size: '5.2MB',
+  seeds: 42,
+  peers: 10,
+  desc: '',
+  magnet: 'magnet:?xt=urn:btih:test',
+  provider: '1337x',
+  ...overrides
+})
+
+const audioFile = (name: string, length: number): MockTorrentFile => ({
+  name,
+  length,
+  createReadStream: jest.fn()
+})
+
+const makeTorrent = (files: MockTorrentFile[]): MockTorrent => ({
+  name: 'mock torrent',
+  files,
+  downloaded: 0,
+  length: files.reduce((sum, f) => sum + f.length, 0),
+  destroy: jest.fn()
+})
 
 describe('TorrentClient', () => {
-  const mockTorrent = {
-    name: 'Queen - Bohemian Rhapsody.mp3',
-    files: [
-      {
-        name: 'Queen - Bohemian Rhapsody.mp3',
-        length: 5000000, // 5MB
-        createReadStream: jest.fn(() => ({
-          pipe: jest.fn()
-        }))
-      }
-    ],
-    downloaded: 0,
-    length: 5000000,
-    destroy: jest.fn()
-  }
-
-  const mockWebTorrentInstance = {
+  const mockClient = {
     add: jest.fn(),
     destroy: jest.fn()
   }
 
   beforeEach(() => {
     jest.clearAllMocks()
-    MockedWebTorrent.mockImplementation(() => mockWebTorrentInstance as any)
+    mockWebTorrent.mockImplementation(() => mockClient)
   })
 
-  describe('searchTorrents', () => {
-    test('should search for torrents successfully', async () => {
-      const mockResults = [
-        {
-          title: 'Queen - Bohemian Rhapsody (1975) [FLAC]',
-          size: '5.2MB',
-          seeds: 42,
-          magnet: 'magnet:?xt=urn:btih:test',
-          provider: '1337x'
-        },
-        {
-          title: 'Queen Greatest Hits',
-          size: '120MB',
-          seeds: 15,
-          magnet: 'magnet:?xt=urn:btih:test2',
-          provider: 'ThePirateBay'
-        }
-      ]
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
 
-      MockedTorrentSearchApi.search.mockResolvedValue(mockResults)
+  // Wires a torrent whose selected file pipes into a write stream that
+  // finishes immediately — the download succeeds without touching disk.
+  const wireSuccessfulDownload = (torrent: MockTorrent, fileIndex: number) => {
+    const writeStream = new EventEmitter()
+    jest.spyOn(fs, 'createWriteStream').mockReturnValue(writeStream as unknown as fs.WriteStream)
+
+    torrent.files[fileIndex].createReadStream.mockReturnValue({
+      pipe: jest.fn(() => {
+        setImmediate(() => writeStream.emit('finish'))
+        return writeStream
+      })
+    })
+
+    mockClient.add.mockImplementation((_magnet, _options, callback) => {
+      setImmediate(() => (callback as (t: MockTorrent) => void)(torrent))
+      return torrent
+    })
+  }
+
+  describe('searchTorrents', () => {
+    test('maps provider results into TorrentResult shape', async () => {
+      mockSearch.mockResolvedValue([
+        searchResult(),
+        searchResult({ title: 'Queen Greatest Hits', seeds: 15, magnet: 'magnet:2', provider: 'ThePirateBay' })
+      ])
 
       const results = await TorrentClient.searchTorrents('Queen Bohemian Rhapsody', 10)
 
-      expect(MockedTorrentSearchApi.search).toHaveBeenCalledWith('Queen Bohemian Rhapsody', 'Audio', 10)
+      expect(mockSearch).toHaveBeenCalledWith('Queen Bohemian Rhapsody', 'Audio', 10)
       expect(results).toHaveLength(2)
       expect(results[0]).toEqual({
         title: 'Queen - Bohemian Rhapsody (1975) [FLAC]',
@@ -72,26 +102,16 @@ describe('TorrentClient', () => {
       })
     })
 
-    test('should handle search errors gracefully', async () => {
-      MockedTorrentSearchApi.search.mockRejectedValue(new Error('Search failed'))
+    test('returns an empty list when the search provider throws', async () => {
+      mockSearch.mockRejectedValue(new Error('Search failed'))
 
       const results = await TorrentClient.searchTorrents('Invalid Query')
 
       expect(results).toEqual([])
     })
 
-    test('should handle missing seeds data', async () => {
-      const mockResults = [
-        {
-          title: 'Test Song',
-          size: '5MB',
-          magnet: 'magnet:test',
-          provider: 'test'
-          // No seeds property
-        }
-      ]
-
-      MockedTorrentSearchApi.search.mockResolvedValue(mockResults)
+    test('defaults seeders to 0 when the provider omits seeds', async () => {
+      mockSearch.mockResolvedValue([searchResult({ seeds: undefined })])
 
       const results = await TorrentClient.searchTorrents('test query')
 
@@ -100,62 +120,23 @@ describe('TorrentClient', () => {
   })
 
   describe('downloadAudio', () => {
-    test('should download audio file successfully', async () => {
-      const mockWriteStream = {
-        on: jest.fn((event, callback) => {
-          if (event === 'finish') {
-            setTimeout(callback, 100) // Simulate async completion
-          }
-          return mockWriteStream
-        })
-      }
+    test('resolves with the output path when the download finishes', async () => {
+      const torrent = makeTorrent([audioFile('Queen - Bohemian Rhapsody.mp3', 5_000_000)])
+      wireSuccessfulDownload(torrent, 0)
 
-      const mockReadStream = {
-        pipe: jest.fn(() => mockWriteStream)
-      }
-
-      mockTorrent.files[0].createReadStream.mockReturnValue(mockReadStream)
-
-      // Mock the torrent add callback
-      mockWebTorrentInstance.add.mockImplementation((magnet, options, callback) => {
-        setTimeout(() => callback(mockTorrent), 50)
-        return mockTorrent as any
-      })
-
-      const progressCallback = jest.fn()
-      const downloadPromise = TorrentClient.downloadAudio(
-        'magnet:?xt=urn:btih:test',
-        'Test Song',
-        progressCallback
-      )
-
-      // Simulate download progress
-      setTimeout(() => {
-        mockTorrent.downloaded = 2500000 // 50% downloaded
-      }, 25)
-
-      const result = await downloadPromise
+      const result = await TorrentClient.downloadAudio('magnet:?xt=urn:btih:test', 'Test Song')
 
       expect(result).toMatch(/Test_Song_.*\.mp3$/)
-      expect(mockWebTorrentInstance.add).toHaveBeenCalled()
-      expect(mockTorrent.files[0].createReadStream).toHaveBeenCalled()
+      expect(mockClient.add).toHaveBeenCalled()
+      expect(torrent.files[0].createReadStream).toHaveBeenCalled()
+      expect(torrent.destroy).toHaveBeenCalled()
     })
 
-    test('should handle torrents with no audio files', async () => {
-      const mockTorrentNoAudio = {
-        ...mockTorrent,
-        files: [
-          {
-            name: 'readme.txt',
-            length: 1000,
-            createReadStream: jest.fn()
-          }
-        ]
-      }
-
-      mockWebTorrentInstance.add.mockImplementation((magnet, options, callback) => {
-        setTimeout(() => callback(mockTorrentNoAudio), 50)
-        return mockTorrentNoAudio as any
+    test('rejects when the torrent contains no audio files', async () => {
+      const torrent = makeTorrent([audioFile('readme.txt', 1000)])
+      mockClient.add.mockImplementation((_magnet, _options, callback) => {
+        setImmediate(() => (callback as (t: MockTorrent) => void)(torrent))
+        return torrent
       })
 
       await expect(
@@ -163,90 +144,38 @@ describe('TorrentClient', () => {
       ).rejects.toThrow('No audio files found in torrent')
     })
 
-    test('should handle download timeout', async () => {
-      // Mock a torrent that never completes
-      mockWebTorrentInstance.add.mockImplementation((magnet, options, callback) => {
-        // Never call the callback to simulate hanging
-        return mockTorrent as any
-      })
+    test('rejects with a timeout when the torrent never becomes ready', async () => {
+      // add() never invokes its callback — the timeout must still fire
+      mockClient.add.mockImplementation(() => makeTorrent([]))
 
       await expect(
-        TorrentClient.downloadAudio('magnet:test', 'Test')
+        TorrentClient.downloadAudio('magnet:test', 'Test', undefined, 100)
       ).rejects.toThrow('Download timeout')
-    }, 15000) // Longer timeout for this test
+    })
 
-    test('should select largest audio file when multiple exist', async () => {
-      const mockTorrentMultipleAudio = {
-        ...mockTorrent,
-        files: [
-          {
-            name: 'small-preview.mp3',
-            length: 1000000, // 1MB
-            createReadStream: jest.fn()
-          },
-          {
-            name: 'full-song.mp3',
-            length: 5000000, // 5MB (largest)
-            createReadStream: jest.fn(() => ({ pipe: jest.fn() }))
-          },
-          {
-            name: 'medium-quality.wav',
-            length: 3000000, // 3MB
-            createReadStream: jest.fn()
-          }
-        ]
-      }
-
-      mockWebTorrentInstance.add.mockImplementation((magnet, options, callback) => {
-        setTimeout(() => callback(mockTorrentMultipleAudio), 50)
-        return mockTorrentMultipleAudio as any
-      })
-
-      const mockWriteStream = {
-        on: jest.fn((event, callback) => {
-          if (event === 'finish') setTimeout(callback, 100)
-          return mockWriteStream
-        })
-      }
-
-      mockTorrentMultipleAudio.files[1].createReadStream().pipe = jest.fn(() => mockWriteStream)
+    test('selects the largest audio file when multiple exist', async () => {
+      const torrent = makeTorrent([
+        audioFile('small-preview.mp3', 1_000_000),
+        audioFile('full-song.mp3', 5_000_000),
+        audioFile('medium-quality.wav', 3_000_000)
+      ])
+      wireSuccessfulDownload(torrent, 1)
 
       await TorrentClient.downloadAudio('magnet:test', 'Test')
 
-      // Should select the largest file (index 1)
-      expect(mockTorrentMultipleAudio.files[1].createReadStream).toHaveBeenCalled()
-      expect(mockTorrentMultipleAudio.files[0].createReadStream).not.toHaveBeenCalled()
-      expect(mockTorrentMultipleAudio.files[2].createReadStream).not.toHaveBeenCalled()
+      expect(torrent.files[1].createReadStream).toHaveBeenCalled()
+      expect(torrent.files[0].createReadStream).not.toHaveBeenCalled()
+      expect(torrent.files[2].createReadStream).not.toHaveBeenCalled()
     })
   })
 
   describe('findBestMatch', () => {
-    test('should find best matching torrent', async () => {
-      const mockSearchResults = [
-        {
-          title: 'Queen - Bohemian Rhapsody [1975] FLAC',
-          size: '5MB',
-          seeds: 50,
-          magnet: 'magnet:best',
-          provider: '1337x'
-        },
-        {
-          title: 'Queen Bohemian Rhapsody MP3',
-          size: '4MB', 
-          seeds: 25,
-          magnet: 'magnet:ok',
-          provider: 'TPB'
-        },
-        {
-          title: 'Random Song',
-          size: '3MB',
-          seeds: 100, // High seeders but wrong song
-          magnet: 'magnet:wrong',
-          provider: 'test'
-        }
-      ]
-
-      MockedTorrentSearchApi.search.mockResolvedValue(mockSearchResults)
+    test('returns the highest-seeded result matching both artist and title', async () => {
+      mockSearch.mockResolvedValue([
+        searchResult({ title: 'Queen - Bohemian Rhapsody [1975] FLAC', seeds: 50, magnet: 'magnet:best' }),
+        searchResult({ title: 'Queen Bohemian Rhapsody MP3', seeds: 25, magnet: 'magnet:ok' }),
+        searchResult({ title: 'Random Song', seeds: 100, magnet: 'magnet:wrong' })
+      ])
 
       const result = await TorrentClient.findBestMatch('Bohemian Rhapsody', 'Queen', 5)
 
@@ -255,74 +184,44 @@ describe('TorrentClient', () => {
       expect(result!.seeders).toBe(50)
     })
 
-    test('should return null if no good matches found', async () => {
-      const mockSearchResults = [
-        {
-          title: 'Completely Different Song',
-          size: '5MB',
-          seeds: 50,
-          magnet: 'magnet:wrong',
-          provider: 'test'
-        }
-      ]
-
-      MockedTorrentSearchApi.search.mockResolvedValue(mockSearchResults)
+    test('returns null when no result matches the song', async () => {
+      mockSearch.mockResolvedValue([searchResult({ title: 'Completely Different Song', seeds: 50 })])
 
       const result = await TorrentClient.findBestMatch('Bohemian Rhapsody', 'Queen', 5)
 
       expect(result).toBeNull()
     })
 
-    test('should filter out torrents with insufficient seeders', async () => {
-      const mockSearchResults = [
-        {
-          title: 'Queen - Bohemian Rhapsody',
-          size: '5MB',
-          seeds: 2, // Below minimum
-          magnet: 'magnet:lowseed',
-          provider: 'test'
-        }
-      ]
-
-      MockedTorrentSearchApi.search.mockResolvedValue(mockSearchResults)
+    test('filters out results with insufficient seeders', async () => {
+      mockSearch.mockResolvedValue([searchResult({ title: 'Queen - Bohemian Rhapsody', seeds: 2 })])
 
       const result = await TorrentClient.findBestMatch('Bohemian Rhapsody', 'Queen', 5)
 
       expect(result).toBeNull()
     })
 
-    test('should try multiple query variations', async () => {
-      // Mock first query returning no results
-      MockedTorrentSearchApi.search
+    test('tries multiple query variations until one matches', async () => {
+      mockSearch
         .mockResolvedValueOnce([]) // "Queen Bohemian Rhapsody"
         .mockResolvedValueOnce([   // "Bohemian Rhapsody Queen"
-          {
-            title: 'Bohemian Rhapsody - Queen',
-            size: '5MB',
-            seeds: 30,
-            magnet: 'magnet:found',
-            provider: 'test'
-          }
+          searchResult({ title: 'Bohemian Rhapsody - Queen', seeds: 30, magnet: 'magnet:found' })
         ])
 
       const result = await TorrentClient.findBestMatch('Bohemian Rhapsody', 'Queen', 5)
 
-      expect(MockedTorrentSearchApi.search).toHaveBeenCalledTimes(2)
+      expect(mockSearch).toHaveBeenCalledTimes(2)
       expect(result).not.toBeNull()
       expect(result!.title).toBe('Bohemian Rhapsody - Queen')
     })
   })
 
   describe('utility methods', () => {
-    test('should cleanup client', () => {
+    test('cleanup destroys the client without throwing', () => {
       TorrentClient.cleanup()
-      // Just verify it doesn't throw - actual cleanup is internal
     })
 
-    test('should get downloaded files list', () => {
-      // Mock fs for this test
-      const mockFiles = TorrentClient.getDownloadedFiles()
-      expect(Array.isArray(mockFiles)).toBe(true)
+    test('getDownloadedFiles returns an array', () => {
+      expect(Array.isArray(TorrentClient.getDownloadedFiles())).toBe(true)
     })
   })
 })

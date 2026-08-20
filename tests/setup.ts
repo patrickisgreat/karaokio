@@ -1,61 +1,52 @@
-import { beforeAll, afterAll, beforeEach, afterEach } from '@jest/globals'
+import { beforeAll, afterAll, afterEach } from '@jest/globals'
 import fs from 'fs'
 import path from 'path'
 
-// Test database path
-const TEST_DB_PATH = path.join(__dirname, 'test-karaoke.db')
+// Everything below runs at module load, BEFORE any test file's imports are
+// evaluated. That matters: database.ts and the *Client classes read these env
+// vars in static initializers at import time, so setting them in beforeAll
+// would be too late.
+//
+// Each jest worker gets its own sandbox (own DB file, own dirs) so parallel
+// suites can't interfere with each other — or with the real karaoke.db.
+const WORKER_ID = process.env.JEST_WORKER_ID || '0'
+const WORKER_ROOT = path.join(__dirname, `.worker-${WORKER_ID}`)
 
-// Test directories
-const TEST_DIRS = [
-  path.join(__dirname, 'temp'),
-  path.join(__dirname, 'uploads'),
-  path.join(__dirname, 'output'),
-  path.join(__dirname, 'cache')
-]
+const TEST_DB_PATH = path.join(WORKER_ROOT, 'test-karaoke.db')
 
-beforeAll(() => {
-  // Set test environment variables (only if not already set)
-  if (!process.env.NODE_ENV) {
-    (process.env as any).NODE_ENV = 'test'
-  }
-  process.env.UPLOAD_DIR = path.join(__dirname, 'uploads')
-  process.env.OUTPUT_DIR = path.join(__dirname, 'output')
-  process.env.TEMP_DIR = path.join(__dirname, 'temp')
-  process.env.CACHE_DIR = path.join(__dirname, 'cache')
-  
-  // Disable external services in tests
-  process.env.ENABLE_TORRENT_DOWNLOAD = 'false'
-  process.env.ENABLE_YOUTUBE_DOWNLOAD = 'false'
-  
-  // Create test directories
-  TEST_DIRS.forEach(dir => {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true })
-    }
-  })
+const TEST_DIRS = {
+  UPLOAD_DIR: path.join(WORKER_ROOT, 'uploads'),
+  OUTPUT_DIR: path.join(WORKER_ROOT, 'output'),
+  TEMP_DIR: path.join(WORKER_ROOT, 'temp'),
+  CACHE_DIR: path.join(WORKER_ROOT, 'cache'),
+  DOWNLOAD_DIR: path.join(WORKER_ROOT, 'downloads'),
+  YOUTUBE_VIDEO_DIR: path.join(WORKER_ROOT, 'youtube_videos')
+}
+
+process.env.KARAOKE_DB_PATH = TEST_DB_PATH
+Object.entries(TEST_DIRS).forEach(([envVar, dir]) => {
+  process.env[envVar] = dir
+  fs.mkdirSync(dir, { recursive: true })
 })
 
-beforeEach(() => {
-  // Clean up test database before each test
-  try {
-    if (fs.existsSync(TEST_DB_PATH)) {
-      fs.unlinkSync(TEST_DB_PATH)
-    }
-  } catch (error) {
-    // Ignore cleanup errors
-    console.warn('Test cleanup warning:', error)
+// Disable external services in tests
+process.env.ENABLE_TORRENT_DOWNLOAD = 'false'
+process.env.ENABLE_YOUTUBE_DOWNLOAD = 'false'
+
+beforeAll(() => {
+  if (!process.env.NODE_ENV) {
+    (process.env as any).NODE_ENV = 'test'
   }
 })
 
 afterEach(() => {
-  // Clean up test files after each test
-  TEST_DIRS.forEach(dir => {
+  // Clean up test files after each test (directories themselves stay for the
+  // next suite in this worker)
+  Object.values(TEST_DIRS).forEach(dir => {
     if (fs.existsSync(dir)) {
-      const files = fs.readdirSync(dir)
-      files.forEach(file => {
+      fs.readdirSync(dir).forEach(file => {
         const filePath = path.join(dir, file)
-        const stat = fs.statSync(filePath)
-        if (stat.isFile()) {
+        if (fs.statSync(filePath).isFile()) {
           fs.unlinkSync(filePath)
         }
       })
@@ -64,22 +55,17 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  // Clean up test directories
-  TEST_DIRS.forEach(dir => {
-    try {
-      if (fs.existsSync(dir)) {
-        fs.rmSync(dir, { recursive: true, force: true })
-      }
-    } catch (error) {
-      console.warn('Test cleanup warning:', error)
-    }
-  })
-  
-  // Clean up test database
+  // better-sqlite3 keeps the node process alive until the connection is
+  // closed; without this, jest force-exits with a leaked-handle warning.
   try {
-    if (fs.existsSync(TEST_DB_PATH)) {
-      fs.unlinkSync(TEST_DB_PATH)
-    }
+    const db = require('@/lib/database').default
+    db.close()
+  } catch {
+    // this suite never opened the database
+  }
+
+  try {
+    fs.rmSync(WORKER_ROOT, { recursive: true, force: true })
   } catch (error) {
     console.warn('Test cleanup warning:', error)
   }
