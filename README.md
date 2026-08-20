@@ -5,7 +5,7 @@ AI-powered karaoke queue system that transforms any song into karaoke with vocal
 ## Features
 
 ### 🎵 Complete Karaoke Pipeline
-- **AI Vocal Separation**: Demucs, Spleeter, or FFmpeg processing
+- **AI Vocal Separation**: Demucs or FFmpeg processing
 - **Smart Song Search**: Spotify, MusicBrainz, and local library integration
 - **Lyrics Synchronization**: AI-powered timing with multiple APIs
 - **Video Generation**: Animated backgrounds with scrolling lyrics
@@ -43,7 +43,7 @@ Vocal Separation → Lyrics Sync → Video Generation → Ready to Sing
 ### Data Flow
 ```
 1. User adds song (name + search query)
-2. Background job processes audio with Demucs/Spleeter
+2. Background job processes audio with Demucs
 3. Lyrics fetched and synchronized with timestamps  
 4. Video generated with animated background + lyrics
 5. Song marked "ready" in queue
@@ -54,7 +54,7 @@ Vocal Separation → Lyrics Sync → Video Generation → Ready to Sing
 
 - **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
 - **Database**: SQLite with better-sqlite3
-- **Audio Processing**: Demucs, Spleeter, FFmpeg  
+- **Audio Processing**: Demucs, FFmpeg  
 - **Video Processing**: FFmpeg with complex filters and audio replacement
 - **Content Acquisition**: WebTorrent for audio, YouTube-dl for karaoke videos
 - **APIs**: Spotify, MusicBrainz, Lyrics.ovh, QuickLRC, Genius, Musixmatch
@@ -66,11 +66,12 @@ See [SETUP.md](./SETUP.md) for detailed installation instructions.
 
 ```bash
 # Install system dependencies (macOS)
-brew install ffmpeg python node
-pip install demucs spleeter
+brew install ffmpeg yt-dlp
+pipx install demucs
 
 # Install and run
 npm install
+npm run doctor
 npm run dev
 ```
 
@@ -88,7 +89,7 @@ Vocal Separation → Lyrics Sync → Audio Replacement → Ready to Sing!
 1. 🔍 **Cache Check**: Instantly serve if song already processed
 2. 📥 **Torrent Download**: Find and download original song via torrents  
 3. 🎥 **YouTube Search**: Download matching karaoke video automatically
-4. 🎙️ **Vocal Separation**: Remove vocals with Demucs/Spleeter AI
+4. 🎙️ **Vocal Separation**: Remove vocals with Demucs AI
 5. 📝 **Lyrics Sync**: Fetch and synchronize lyrics with timestamps
 6. 🔄 **Audio Replacement**: Replace karaoke video audio with AI-processed track
 7. 💾 **Cache Storage**: Save for instant future access

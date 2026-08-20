@@ -2,7 +2,7 @@ import Database from 'better-sqlite3'
 import { QueuedSong, User } from '@/types/queue'
 import path from 'path'
 
-const dbPath = path.join(process.cwd(), 'karaoke.db')
+const dbPath = process.env.KARAOKE_DB_PATH || path.join(process.cwd(), 'karaoke.db')
 const db = new Database(dbPath)
 
 // Initialize database tables

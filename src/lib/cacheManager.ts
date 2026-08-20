@@ -36,7 +36,7 @@ export interface ProcessedSong {
 }
 
 export class CacheManager {
-  private static readonly CACHE_DIR = path.join(process.cwd(), 'cache')
+  private static readonly CACHE_DIR = process.env.CACHE_DIR || path.join(process.cwd(), 'cache')
 
   static {
     // Ensure cache directory exists
@@ -270,24 +270,5 @@ export class CacheManager {
       lastAccessed: new Date(row.last_accessed),
       fileSize: row.file_size
     }))
-  }
-
-  static async preloadPopularSongs(songList: Array<{title: string, artist: string}>) {
-    console.log(`Preloading ${songList.length} popular songs...`)
-    
-    const { processAudio } = await import('./jobProcessor')
-    
-    for (const song of songList) {
-      const cacheKey = this.generateCacheKey(song.title, song.artist, 'high')
-      const cached = await this.checkCache(song.title, song.artist, 'high')
-      
-      if (!cached) {
-        console.log(`Preloading: ${song.artist} - ${song.title}`)
-        // This would trigger the full processing pipeline
-        // Implementation depends on your job queue system
-      } else {
-        console.log(`Already cached: ${song.artist} - ${song.title}`)
-      }
-    }
   }
 }

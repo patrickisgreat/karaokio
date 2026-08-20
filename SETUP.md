@@ -1,171 +1,88 @@
 # Karaokio Setup Guide
 
-## Prerequisites
+Karaokio runs entirely on one machine (the party host's laptop) and shells out
+to a few system tools. Get those installed, run the doctor, and start the dev
+server.
 
-### System Dependencies
+## 1. System dependencies
 
-1. **Python 3.8+** with pip
-2. **FFmpeg** - For audio/video processing
-3. **Node.js 18+** - For the web application
-
-### Audio Separation Tools
-
-Choose one or more:
-
-**Option A: Demucs (Recommended - Highest Quality)**
-```bash
-pip install demucs
-```
-
-**Option B: Spleeter**
-```bash
-pip install spleeter tensorflow
-```
-
-**Option C: Basic FFmpeg (Fastest)**
-Already included with FFmpeg installation.
-
-### System Installation
+| Tool   | Required?   | What it enables                                        |
+| ------ | ----------- | ------------------------------------------------------ |
+| Node   | required    | the app itself (version pinned in `.nvmrc`)            |
+| ffmpeg | required    | all audio/video processing, plus "fast" vocal removal  |
+| yt-dlp | recommended | YouTube audio + karaoke video download                 |
+| demucs | recommended | high-quality AI vocal separation (`high`/`balanced`)   |
 
 **macOS:**
-```bash
-# Install Homebrew if not already installed
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-# Install dependencies
-brew install ffmpeg python node
-pip install demucs spleeter tensorflow
+```bash
+brew install ffmpeg yt-dlp
+pipx install demucs        # or: pip install demucs
 ```
 
 **Ubuntu/Debian:**
+
 ```bash
-sudo apt update
-sudo apt install ffmpeg python3 python3-pip nodejs npm
-pip3 install demucs spleeter tensorflow
+sudo apt install ffmpeg
+sudo apt install pipx && pipx install yt-dlp demucs
 ```
 
-**Windows:**
+Missing optional tools don't break the app — the pipeline degrades (e.g. no
+demucs → ffmpeg center-channel vocal removal, which is fast but much rougher).
+
+## 2. Application setup
+
 ```bash
-# Install via Chocolatey
-choco install ffmpeg python nodejs
-
-# Install Python packages
-pip install demucs spleeter tensorflow
-```
-
-## Application Setup
-
-1. **Install Node.js dependencies:**
-```bash
+nvm use              # match the pinned Node version
 npm install
+npm run doctor       # verifies the system tools above
+cp .env.example .env.local
+npm run dev          # http://localhost:3000
 ```
 
-2. **Set up environment variables:**
-Create `.env.local`:
-```env
-# Optional API Keys (for enhanced functionality)
-SPOTIFY_ACCESS_TOKEN=your_spotify_token
-GENIUS_ACCESS_TOKEN=your_genius_token
-MUSIXMATCH_API_KEY=your_musixmatch_key
-QUICKLRC_API_KEY=your_quicklrc_key
+`.env.local` works with every value left unset — all API keys are optional.
+The SQLite database (`karaoke.db`) and the runtime directories (`uploads/`,
+`output/`, `temp/`, `cache/`, `downloads/`, `youtube_videos/`) are created
+automatically on first run.
 
-# File paths
-UPLOAD_DIR=./uploads
-OUTPUT_DIR=./output
-TEMP_DIR=./temp
-```
+## 3. Verify
 
-3. **Create required directories:**
 ```bash
-mkdir -p uploads output temp
-```
-
-4. **Initialize database:**
-The SQLite database will be created automatically on first run.
-
-5. **Start the application:**
-```bash
-npm run dev
+npm run type-check   # no type errors
+npm run lint         # no lint errors
+npm test             # full suite, runs in seconds, no system tools needed
 ```
 
 ## Usage
 
-### Basic Workflow
+1. **Add songs**: guests enter their name and a song request
+2. **Processing**: the pipeline acquires audio, separates vocals, syncs lyrics
+3. **Queue**: songs show live status and progress
+4. **Sing**: when a song is ready, hit Start Singing for the full-screen player
 
-1. **Add Songs**: Users enter their name and song request
-2. **Processing**: System searches for audio and processes with AI
-3. **Queue**: Songs appear in queue with status updates  
-4. **Karaoke**: When ready, users can start singing
+### Processing quality options
 
-### Audio Sources
+- **Fast** — ffmpeg center-channel removal (~30 seconds, rough)
+- **Balanced / High** — Demucs AI separation (minutes per song, good)
 
-The system supports multiple audio sources:
+### Audio sources (in priority order)
 
-1. **User Uploads**: Upload MP3/WAV files directly
-2. **Local Library**: Scan local music folder
-3. **External Sources**: Configure with streaming APIs
-
-### Processing Quality Options
-
-- **Fast**: Basic vocal removal using FFmpeg (~30 seconds)
-- **Balanced**: Spleeter processing (~1-2 minutes)  
-- **High**: Demucs processing (~3-5 minutes)
-
-## File Structure
-
-```
-karaokio/
-├── uploads/          # User uploaded audio files
-├── output/           # Processed karaoke files  
-├── temp/             # Temporary processing files
-├── karaoke.db        # SQLite database
-└── src/
-    ├── app/api/      # Backend API routes
-    ├── lib/          # Core processing logic
-    └── components/   # React UI components
-```
-
-## API Endpoints
-
-- `POST /api/queue/add` - Add song to queue
-- `GET /api/queue` - Get current queue state
-- `POST /api/upload` - Upload audio file
-- `POST /api/songs/search` - Search for songs
-- `POST /api/queue/[id]/start` - Start singing song
-- `POST /api/queue/[id]/complete` - Mark song complete
+1. **User uploads** — drop files in `uploads/` or use the upload API
+2. **yt-dlp download** — automatic, needs `yt-dlp` installed
+3. **Torrents** — optional, disabled by default (`ENABLE_TORRENT_DOWNLOAD`)
 
 ## Troubleshooting
 
-### Common Issues
+- **`npm run doctor` says a tool is missing** — install it with the hint shown;
+  restart the dev server afterwards.
+- **A song is stuck in processing** — check the dev server logs; restart the
+  server (song state survives in SQLite; in-flight jobs do not, yet).
+- **A song failed** — usually audio acquisition: put a correctly named file
+  (`Artist - Title.mp3`) in `uploads/` and retry.
+- **Disk filling up** — processed songs accumulate in `output/` and `cache/`;
+  delete them freely, anything needed again will be reprocessed.
 
-1. **"Demucs not found"**
-   - Ensure Python and Demucs are installed: `pip install demucs`
+## Project docs
 
-2. **"FFmpeg not found"**
-   - Install FFmpeg: `brew install ffmpeg` (Mac) or `sudo apt install ffmpeg` (Linux)
-
-3. **Processing stuck**
-   - Check disk space in temp/output directories
-   - Restart the development server
-
-4. **No audio files found**
-   - Upload files to `/uploads` directory
-   - Or implement music library scanning
-
-### Performance Tips
-
-- Use SSD storage for faster processing
-- Allocate sufficient RAM (4GB+ recommended)
-- Use "Fast" mode for real-time karaoke events
-- Pre-process popular songs during setup
-
-## Production Deployment
-
-For production use:
-
-1. Set up proper file storage (AWS S3, etc.)
-2. Configure background job queue (Redis/Bull)  
-3. Add user authentication
-4. Set up monitoring and logging
-5. Configure reverse proxy (nginx)
-6. Use PM2 or Docker for process management
+- [CLAUDE.md](./CLAUDE.md) — architecture, conventions, product principles
+- [ROADMAP.md](./ROADMAP.md) — current state and the phased plan

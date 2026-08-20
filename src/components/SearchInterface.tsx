@@ -118,7 +118,7 @@ export default function SearchInterface() {
                 </label>
                 <select className="w-full px-3 py-2 border border-gray-300 rounded-lg">
                   <option>High Quality (Demucs)</option>
-                  <option>Balanced (Spleeter)</option>
+                  <option>Balanced (Demucs)</option>
                   <option>Fast (Basic)</option>
                 </select>
               </div>

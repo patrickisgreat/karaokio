@@ -23,11 +23,12 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    // webtorrent v2 is ESM-only and cannot be require()d under ts-jest's CJS
+    // transform; both packages hit the network. Tests always get these stubs.
     '^webtorrent$': '<rootDir>/tests/__mocks__/webtorrent.js',
     '^torrent-search-api$': '<rootDir>/tests/__mocks__/torrent-search-api.js'
   },
-  testTimeout: 30000,
-  transformIgnorePatterns: [
-    'node_modules/(?!(webtorrent|torrent-search-api)/)'
-  ]
+  // Unit tests mock every external boundary; nothing legitimate should take
+  // longer than this. A test that does is hanging, not working.
+  testTimeout: 10000
 }

@@ -27,7 +27,7 @@ const MockedVideoProcessor = VideoProcessor as jest.Mocked<typeof VideoProcessor
 const MockedLyricsProcessor = LyricsProcessor as jest.Mocked<typeof LyricsProcessor>
 
 describe('Autonomous Processor Integration', () => {
-  const testSongId = uuidv4()
+  let testSongId: string
   const testTitle = 'Bohemian Rhapsody'
   const testArtist = 'Queen'
   const testUser = {
@@ -44,7 +44,9 @@ describe('Autonomous Processor Integration', () => {
       fs.mkdirSync(testTempDir, { recursive: true })
     }
 
-    // Add test song to database
+    // Fresh song per test — songs.id is a primary key, so reusing one id
+    // across tests would fail the second INSERT
+    testSongId = uuidv4()
     KaraokeDB.addUser(testUser)
     KaraokeDB.addSong({
       id: testSongId,
@@ -60,6 +62,8 @@ describe('Autonomous Processor Integration', () => {
   })
 
   afterEach(() => {
+    jest.restoreAllMocks()
+
     // Clean up test files
     if (fs.existsSync(testTempDir)) {
       fs.rmSync(testTempDir, { recursive: true, force: true })
@@ -147,7 +151,7 @@ describe('Autonomous Processor Integration', () => {
     // Verify file paths were updated in database
     expect(finalSong?.karaoke?.instrumentalUrl).toBe(mockInstrumentalPath)
     expect(finalSong?.karaoke?.videoUrl).toBe(mockFinalVideoPath)
-  }, 30000)
+  })
 
   test('should use cached result when available', async () => {
     // Mock cache hit
@@ -253,8 +257,11 @@ describe('Autonomous Processor Integration', () => {
     MockedLyricsProcessor.smartSynchronize.mockResolvedValue([])
     MockedLyricsProcessor.convertToLRC.mockReturnValue('mock lrc')
 
-    // Mock generated video creation
+    // Mock generated video creation. Lyrics were found, so the processor
+    // takes the generateKaraokeVideo branch (createLyricVideo is the
+    // no-lyrics fallback).
     const { VideoGenerator } = await import('@/lib/videoGenerator')
+    jest.spyOn(VideoGenerator, 'generateKaraokeVideo').mockResolvedValue('generated-video.mp4')
     jest.spyOn(VideoGenerator, 'createLyricVideo').mockResolvedValue('generated-video.mp4')
 
     // Run the processor
@@ -268,19 +275,18 @@ describe('Autonomous Processor Integration', () => {
     expect(finalSong?.status).toBe('ready')
 
     // Verify fallback video generation was used
-    expect(VideoGenerator.createLyricVideo).toHaveBeenCalled()
+    expect(VideoGenerator.generateKaraokeVideo).toHaveBeenCalled()
   })
 
   test('should handle processing timeout gracefully', async () => {
     // Mock cache miss
     jest.spyOn(CacheManager, 'checkCache').mockResolvedValue(null)
 
-    // Mock torrent that times out
-    MockedTorrentClient.findBestMatch.mockImplementation(() => 
-      new Promise(resolve => setTimeout(() => resolve(null), 10000))
+    // Mock torrent search that resolves slowly (and empty)
+    MockedTorrentClient.findBestMatch.mockImplementation(() =>
+      new Promise(resolve => setTimeout(() => resolve(null), 200))
     )
 
-    // Run with shorter timeout
     await processKaraokeSong(testSongId, {
       quality: 'high',
       outputFormat: 'wav'

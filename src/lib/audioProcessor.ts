@@ -1,4 +1,4 @@
-import { spawn, ChildProcess } from 'child_process'
+import { spawn } from 'child_process'
 import path from 'path'
 import fs from 'fs'
 import ffmpeg from 'fluent-ffmpeg'
@@ -9,8 +9,8 @@ export interface ProcessingOptions {
 }
 
 export class AudioProcessor {
-  private static readonly TEMP_DIR = path.join(process.cwd(), 'temp')
-  private static readonly OUTPUT_DIR = path.join(process.cwd(), 'output')
+  private static readonly TEMP_DIR = process.env.TEMP_DIR || path.join(process.cwd(), 'temp')
+  private static readonly OUTPUT_DIR = process.env.OUTPUT_DIR || path.join(process.cwd(), 'output')
 
   static {
     // Ensure directories exist
@@ -37,9 +37,8 @@ export class AudioProcessor {
     try {
       switch (options.quality) {
         case 'high':
-          return await this.processWithDemucs(inputPath, outputDir, options, onProgress)
         case 'balanced':
-          return await this.processWithSpleeter(inputPath, outputDir, options, onProgress)
+          return await this.processWithDemucs(inputPath, outputDir, options, onProgress)
         case 'fast':
           return await this.processWithFFmpeg(inputPath, instrumentalPath, vocalsPath, onProgress)
         default:
@@ -89,47 +88,6 @@ export class AudioProcessor {
           })
         } else {
           reject(new Error(`Demucs failed with exit code ${code}`))
-        }
-      })
-    })
-  }
-
-  private static async processWithSpleeter(
-    inputPath: string,
-    outputDir: string,
-    options: ProcessingOptions,
-    onProgress?: (progress: number) => void
-  ): Promise<{ instrumental: string; vocals: string }> {
-    return new Promise((resolve, reject) => {
-      // Spleeter command: spleeter separate -p spleeter:2stems-16kHz input.wav -o output_dir
-      const process = spawn('spleeter', [
-        'separate',
-        '-p', 'spleeter:2stems-16kHz',
-        '-o', outputDir,
-        inputPath
-      ])
-
-      let progress = 0
-      const interval = setInterval(() => {
-        progress += 10
-        if (progress > 95) progress = 95
-        onProgress?.(progress)
-      }, 500)
-
-      process.on('close', (code) => {
-        clearInterval(interval)
-        
-        if (code === 0) {
-          const songName = path.parse(inputPath).name
-          const resultDir = path.join(outputDir, songName)
-          
-          resolve({
-            instrumental: path.join(resultDir, 'accompaniment.wav'),
-            vocals: path.join(resultDir, 'vocals.wav')
-          })
-          onProgress?.(100)
-        } else {
-          reject(new Error(`Spleeter failed with exit code ${code}`))
         }
       })
     })

@@ -23,6 +23,23 @@ export interface AutonomousProcessingJob {
 
 const processingJobs = new Map<string, AutonomousProcessingJob>()
 
+// Promise.race against a bare setTimeout leaks the timer when the work wins
+// the race, keeping the process alive until the full timeout elapses — the
+// timer must be cleared no matter which side settles.
+async function withTimeout<T>(work: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      work,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timeout`)), ms)
+      })
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export async function processKaraokeSong(songId: string, options: AutonomousProcessingOptions = {}) {
   const job: AutonomousProcessingJob = { 
     songId, 
@@ -78,19 +95,18 @@ export async function processKaraokeSong(songId: string, options: AutonomousProc
       console.log(`📥 Downloading from torrent: ${torrentResult.title}`)
       
       try {
-        audioPath = await Promise.race([
+        audioPath = await withTimeout(
           TorrentClient.downloadAudio(
-            torrentResult.magnet, 
+            torrentResult.magnet,
             `${artist} - ${songTitle}`,
             (progress) => {
               const overallProgress = 10 + Math.round(progress * 0.15) // 10-25%
               KaraokeDB.updateSongStatus(songId, 'processing', overallProgress)
             }
           ),
-          new Promise<null>((_, reject) => 
-            setTimeout(() => reject(new Error('Torrent timeout')), job.options.maxTorrentWaitTime)
-          )
-        ])
+          job.options.maxTorrentWaitTime!,
+          'Torrent'
+        )
       } catch (error) {
         console.warn(`⚠️ Torrent download failed: ${error}`)
         audioPath = null
@@ -118,12 +134,11 @@ export async function processKaraokeSong(songId: string, options: AutonomousProc
     let youtubeVideoId: string | null = null
 
     try {
-      const youtubeResult = await Promise.race([
+      const youtubeResult = await withTimeout(
         YouTubeClient.getBestKaraokeVideo(songTitle, artist),
-        new Promise<null>((_, reject) => 
-          setTimeout(() => reject(new Error('YouTube timeout')), job.options.maxYouTubeWaitTime)
-        )
-      ])
+        job.options.maxYouTubeWaitTime!,
+        'YouTube'
+      )
 
       if (youtubeResult) {
         karaokeVideoPath = youtubeResult.filePath
@@ -255,7 +270,7 @@ export async function processKaraokeSong(songId: string, options: AutonomousProc
 }
 
 async function checkUploadsDirectory(title: string, artist: string): Promise<string | null> {
-  const uploadDir = path.join(process.cwd(), 'uploads')
+  const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads')
   if (!fs.existsSync(uploadDir)) return null
 
   const possibleFiles = [

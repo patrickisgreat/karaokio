@@ -1,12 +1,9 @@
-import { describe, test, expect, beforeEach, afterEach } from '@jest/globals'
+import { describe, test, expect, beforeEach } from '@jest/globals'
 import { KaraokeDB } from '@/lib/database'
+import db from '@/lib/database'
 import { QueuedSong, User } from '@/types/queue'
-import fs from 'fs'
-import path from 'path'
 
 describe('KaraokeDB', () => {
-  const testDbPath = path.join(__dirname, '../temp/test-karaoke.db')
-  
   const mockUser: User = {
     id: 'user-123',
     name: 'Test User',
@@ -23,29 +20,10 @@ describe('KaraokeDB', () => {
   }
 
   beforeEach(() => {
-    // Clean up any existing test database
-    if (fs.existsSync(testDbPath)) {
-      fs.unlinkSync(testDbPath)
-    }
-    
-    // Override database path for tests
-    process.env.TEST_DB_PATH = testDbPath
-    
-    // Clear all database tables for clean test isolation
-    try {
-      const db = require('@/lib/database').default
-      db.exec('DELETE FROM songs')
-      db.exec('DELETE FROM users')
-    } catch (error) {
-      // Database might not exist yet
-    }
-  })
-
-  afterEach(() => {
-    // Clean up test database
-    if (fs.existsSync(testDbPath)) {
-      fs.unlinkSync(testDbPath)
-    }
+    // The DB itself is per-worker (KARAOKE_DB_PATH, see tests/setup.ts);
+    // clearing tables isolates the tests within this suite from each other.
+    db.exec('DELETE FROM songs')
+    db.exec('DELETE FROM users')
   })
 
   describe('User operations', () => {
