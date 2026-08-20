@@ -9,3 +9,5 @@ cache
 output
 temp
 youtube_videos
+# release-please owns this file; its markdown style is not prettier's
+CHANGELOG.md
