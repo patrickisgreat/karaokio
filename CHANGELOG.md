@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.2](https://github.com/patrickisgreat/karaokio/compare/v1.1.1...v1.1.2) (2026-08-20)
+
+
+### Bug Fixes
+
+* deploy-app needs registry-host for ECR ([ab3eede](https://github.com/patrickisgreat/karaokio/commit/ab3eedeb87888f56f35f79e5c97fb25977687c6e))
+* pass registry-host to docker-build-push for ECR ([0c03559](https://github.com/patrickisgreat/karaokio/commit/0c035599fd1294b94aa027601c6f8c6d14de4f4f))
+
 ## [1.1.1](https://github.com/patrickisgreat/karaokio/compare/v1.1.0...v1.1.1) (2026-08-20)
 
 
