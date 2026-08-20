@@ -3,20 +3,20 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/src', '<rootDir>/tests'],
-  testMatch: [
-    '**/__tests__/**/*.+(ts|tsx|js)',
-    '**/*.(test|spec).+(ts|tsx|js)'
-  ],
+  testMatch: ['**/__tests__/**/*.+(ts|tsx|js)', '**/*.(test|spec).+(ts|tsx|js)'],
   transform: {
-    '^.+\\.(ts|tsx)$': ['ts-jest', {
-      tsconfig: 'tsconfig.json'
-    }]
+    '^.+\\.(ts|tsx)$': [
+      'ts-jest',
+      {
+        tsconfig: 'tsconfig.json',
+      },
+    ],
   },
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
     '!src/app/**/*.tsx',
-    '!src/components/**/*.tsx'
+    '!src/components/**/*.tsx',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
@@ -26,9 +26,9 @@ module.exports = {
     // webtorrent v2 is ESM-only and cannot be require()d under ts-jest's CJS
     // transform; both packages hit the network. Tests always get these stubs.
     '^webtorrent$': '<rootDir>/tests/__mocks__/webtorrent.js',
-    '^torrent-search-api$': '<rootDir>/tests/__mocks__/torrent-search-api.js'
+    '^torrent-search-api$': '<rootDir>/tests/__mocks__/torrent-search-api.js',
   },
   // Unit tests mock every external boundary; nothing legitimate should take
   // longer than this. A test that does is hanging, not working.
-  testTimeout: 10000
+  testTimeout: 10000,
 }

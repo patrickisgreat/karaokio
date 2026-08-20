@@ -23,7 +23,7 @@ Karaokio is a self-hosted karaoke machine for house parties. Guests add songs to
 
 3. **Every external service is optional and fails soft.** The full pipeline must work with **zero API keys** (keyless sources: LRCLIB, MusicBrainz, yt-dlp). Keys in `.env.local` unlock better sources; their absence must never crash a stage. Wrap every external call in a timeout + catch that falls through to the next source.
 
-4. **Everything runs locally.** Audio processing, alignment, and video rendering happen on the host machine via spawned tools (ffmpeg, demucs, yt-dlp). Don't introduce runtime cloud dependencies for the core pipeline — a party with no internet should still play anything already cached or uploaded.
+4. **One box, spun up on demand.** Audio processing, alignment, and video rendering happen on a single machine via spawned tools (ffmpeg, demucs, yt-dlp) — the host's laptop in dev, or the AWS "party box" (a scale-to-zero Fargate task, see `infra/README.md`) for parties. Don't split the pipeline across managed cloud services, and don't add anything that bills while nobody is singing: the box must cost ~nothing when idle. All persistent state lives under `DATA_ROOT` (the EFS mount in AWS) via `src/lib/paths.ts` — new code never invents its own path resolution.
 
 5. **Acquisition is host-supplied first.** Priority order: user uploads / local library → yt-dlp audio download → torrents (config-gated, **off by default**). This is a private tool for personal use at the host's home; keep it that way.
 
@@ -90,15 +90,15 @@ uploads/ downloads/ cache/ output/ temp/ youtube_videos/   # Runtime dirs (gitig
 
 `autonomousProcessor.processKaraokeSong()` is the single entry point, fired in the background when a song is queued. Stages, with their progress bands:
 
-| Stage                | Progress | What happens                                             |
-| -------------------- | -------- | -------------------------------------------------------- |
-| Cache check          | 5%       | Serve instantly if (title, artist, quality) cached       |
-| Audio acquisition    | 10–25%   | Uploads/local library → yt-dlp → torrents (if enabled)   |
-| Karaoke video search | 30%      | yt-dlp search for an existing karaoke video (best-effort)|
-| Vocal separation     | 45–70%   | Demucs (`high`) / FFmpeg center-cancel (`fast`)          |
-| Lyrics fetch + sync  | 75%      | Synced LRC from LRCLIB, else fetch text + align locally  |
-| Video assembly       | 85%      | Replace audio in found video, else generate one (ladder) |
-| Cache + ready        | 100%     | Store artifacts, mark `ready`                            |
+| Stage                | Progress | What happens                                              |
+| -------------------- | -------- | --------------------------------------------------------- |
+| Cache check          | 5%       | Serve instantly if (title, artist, quality) cached        |
+| Audio acquisition    | 10–25%   | Uploads/local library → yt-dlp → torrents (if enabled)    |
+| Karaoke video search | 30%      | yt-dlp search for an existing karaoke video (best-effort) |
+| Vocal separation     | 45–70%   | Demucs (`high`) / FFmpeg center-cancel (`fast`)           |
+| Lyrics fetch + sync  | 75%      | Synced LRC from LRCLIB, else fetch text + align locally   |
+| Video assembly       | 85%      | Replace audio in found video, else generate one (ladder)  |
+| Cache + ready        | 100%     | Store artifacts, mark `ready`                             |
 
 Progress and status live in the `songs` table; the UI polls it. Every stage writes its artifact path to the DB as soon as it exists, so a later crash still leaves usable partial output.
 
@@ -117,8 +117,10 @@ Never commit secrets, `karaoke.db`, or anything in the runtime media directories
 ## Conventions
 
 - TypeScript strict; no semicolons (match existing style); 2-space indent
+- Prettier is the formatter (`npm run format`, config in `.prettierrc`) — CI fails unformatted code
 - Tailwind for styling (no CSS modules)
-- Conventional commits: `feat:` `fix:` `refactor:` `test:` `chore:` `docs:` `perf:`
+- Conventional commits: `feat:` `fix:` `refactor:` `test:` `chore:` `docs:` `perf:` — release-please turns these into version bumps, tags, and CHANGELOG entries on merge to main
+- PRs get an automatic Claude Code review on open; `@claude` in any issue/PR comment summons the agent
 - Feature branches only; never commit directly to `main`; PRs via `gh pr create`; the user reviews all PRs before merge
 - **NEVER add `Co-Authored-By` or "Generated with Claude Code" to commits or PRs**
 
@@ -155,26 +157,31 @@ No PR merges without tests covering the behavior it introduces or changes. If it
 - Never commit secrets; `.env.local` is gitignored — keep it that way.
 - Validate uploads (type, size) and sanitize anything interpolated into shell/ffmpeg arguments — song titles are user input and ffmpeg filter strings are an injection surface. Prefer argument arrays over string-built commands.
 - The media route must resolve paths against the known media directories only (no `../` traversal) — it's the one endpoint that serves files from disk.
-- LAN-only trust model: no auth by design, so never expose the server to the public internet, and don't build features that assume it is.
+- Trust model: **party-code auth, no user accounts.** Guests join with a per-party code (rotated every party-up; QR on the big screen embeds it) and get a signed session cookie; a separate host PIN gates destructive controls (skip, remove, reorder, shutdown). Never add real accounts, and never expose an unauthenticated API route — every route except the join flow checks the session.
 
 ## PR Description Template
 
 ```markdown
 ## Scope
+
 <!-- WHAT and WHY. -->
 
 ## Implementation
+
 <!-- HOW, at a high level. Tradeoffs. What to review closely. -->
 
 ## Demo
+
 <!-- This is an audio/video app — show, don't tell. For pipeline changes:
 the log of a real song run, or the output artifact. For UI: screenshot
 (phone + big screen). -->
 
 ## How to Test
+
 <!-- Automated coverage added, plus manual repro steps. -->
 
 ## Degradation & Risk
+
 <!-- Which rung of the fallback ladder does this touch? What happens when
 its external tool/API is missing, slow, or wrong? -->
 ```

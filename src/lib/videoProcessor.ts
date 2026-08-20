@@ -1,4 +1,5 @@
 import ffmpeg from 'fluent-ffmpeg'
+import { resolveDataPath } from './paths'
 import path from 'path'
 import fs from 'fs'
 
@@ -11,7 +12,10 @@ export interface AudioSyncOptions {
 }
 
 export class VideoProcessor {
-  private static readonly TEMP_DIR = path.join(process.cwd(), 'temp', 'video_processing')
+  private static readonly TEMP_DIR = path.join(
+    resolveDataPath('TEMP_DIR', 'temp'),
+    'video_processing'
+  )
 
   static {
     if (!fs.existsSync(this.TEMP_DIR)) {
@@ -31,40 +35,37 @@ export class VideoProcessor {
       fadeIn: 0,
       fadeOut: 0,
       audioOffset: 0,
-      ...options
+      ...options,
     }
 
     return new Promise((resolve, reject) => {
       console.log(`Replacing audio in video: ${path.basename(videoPath)}`)
-      
-      let command = ffmpeg()
-        .input(videoPath)
-        .input(audioPath)
+
+      let command = ffmpeg().input(videoPath).input(audioPath)
 
       // Apply audio processing based on method
       switch (opts.method) {
         case 'replace':
-          command = command
-            .outputOptions([
-              '-c:v', 'copy', // Copy video stream without re-encoding
-              '-c:a', 'aac',  // Encode audio as AAC
-              '-map', '0:v:0', // Use video from first input
-              '-map', '1:a:0', // Use audio from second input
-              '-shortest'      // End when shortest stream ends
-            ])
+          command = command.outputOptions([
+            '-c:v',
+            'copy', // Copy video stream without re-encoding
+            '-c:a',
+            'aac', // Encode audio as AAC
+            '-map',
+            '0:v:0', // Use video from first input
+            '-map',
+            '1:a:0', // Use audio from second input
+            '-shortest', // End when shortest stream ends
+          ])
           break
 
         case 'overlay':
           command = command
             .complexFilter([
               `[1:a]volume=${opts.volumeLevel}[newaudio]`,
-              `[0:a][newaudio]amix=inputs=2:duration=shortest[audio]`
+              `[0:a][newaudio]amix=inputs=2:duration=shortest[audio]`,
             ])
-            .outputOptions([
-              '-c:v', 'copy',
-              '-map', '0:v:0',
-              '-map', '[audio]'
-            ])
+            .outputOptions(['-c:v', 'copy', '-map', '0:v:0', '-map', '[audio]'])
           break
 
         case 'smart_sync':
@@ -72,13 +73,9 @@ export class VideoProcessor {
           command = command
             .complexFilter([
               `[1:a]volume=${opts.volumeLevel},adelay=${Math.abs(opts.audioOffset)}|${Math.abs(opts.audioOffset)}[synced]`,
-              `[synced]afade=in:st=0:d=${opts.fadeIn},afade=out:st=-${opts.fadeOut}:d=${opts.fadeOut}[audio]`
+              `[synced]afade=in:st=0:d=${opts.fadeIn},afade=out:st=-${opts.fadeOut}:d=${opts.fadeOut}[audio]`,
             ])
-            .outputOptions([
-              '-c:v', 'copy',
-              '-map', '0:v:0',
-              '-map', '[audio]'
-            ])
+            .outputOptions(['-c:v', 'copy', '-map', '0:v:0', '-map', '[audio]'])
           break
       }
 
@@ -104,7 +101,10 @@ export class VideoProcessor {
     })
   }
 
-  static async analyzeAudioSync(videoPath: string, audioPath: string): Promise<{
+  static async analyzeAudioSync(
+    videoPath: string,
+    audioPath: string
+  ): Promise<{
     videoDuration: number
     audioDuration: number
     suggestedOffset: number
@@ -114,35 +114,37 @@ export class VideoProcessor {
       // Get video duration
       ffmpeg.ffprobe(videoPath, (err, videoMetadata) => {
         if (err) return reject(err)
-        
+
         const videoDuration = videoMetadata.format.duration || 0
-        
+
         // Get audio duration
         ffmpeg.ffprobe(audioPath, (err, audioMetadata) => {
           if (err) return reject(err)
-          
+
           const audioDuration = audioMetadata.format.duration || 0
           const durationDiff = Math.abs(videoDuration - audioDuration)
-          
+
           // Simple heuristic for sync offset
           let suggestedOffset = 0
           let confidence = 1.0
-          
+
           // If durations are very different, suggest trimming
           if (durationDiff > 5) {
             confidence = 0.3
-            console.warn(`Large duration difference: video=${videoDuration}s, audio=${audioDuration}s`)
+            console.warn(
+              `Large duration difference: video=${videoDuration}s, audio=${audioDuration}s`
+            )
           } else if (durationDiff > 1) {
             confidence = 0.7
             // Suggest small offset to account for intro/outro differences
             suggestedOffset = (videoDuration - audioDuration) * 500 // Convert to ms
           }
-          
+
           resolve({
             videoDuration,
             audioDuration,
             suggestedOffset,
-            confidence
+            confidence,
           })
         })
       })
@@ -154,20 +156,21 @@ export class VideoProcessor {
     startTime: number = 30,
     duration: number = 15
   ): Promise<string> {
-    const previewPath = path.join(
-      this.TEMP_DIR, 
-      `preview_${Date.now()}.mp4`
-    )
+    const previewPath = path.join(this.TEMP_DIR, `preview_${Date.now()}.mp4`)
 
     return new Promise((resolve, reject) => {
       ffmpeg(videoPath)
         .seekInput(startTime)
         .duration(duration)
         .outputOptions([
-          '-c:v', 'libx264',
-          '-c:a', 'aac',
-          '-crf', '28', // Compressed for preview
-          '-preset', 'fast'
+          '-c:v',
+          'libx264',
+          '-c:a',
+          'aac',
+          '-crf',
+          '28', // Compressed for preview
+          '-preset',
+          'fast',
         ])
         .output(previewPath)
         .on('end', () => resolve(previewPath))
@@ -177,10 +180,7 @@ export class VideoProcessor {
   }
 
   static async extractAudioFromVideo(videoPath: string): Promise<string> {
-    const audioPath = path.join(
-      this.TEMP_DIR,
-      `extracted_${Date.now()}.wav`
-    )
+    const audioPath = path.join(this.TEMP_DIR, `extracted_${Date.now()}.wav`)
 
     return new Promise((resolve, reject) => {
       ffmpeg(videoPath)
@@ -199,14 +199,22 @@ export class VideoProcessor {
     return new Promise((resolve, reject) => {
       ffmpeg(videoPath)
         .outputOptions([
-          '-c:v', 'libx264',
-          '-preset', 'medium',
-          '-crf', '23',
-          '-maxrate', '2M',
-          '-bufsize', '4M',
-          '-movflags', '+faststart', // Enable streaming
-          '-c:a', 'aac',
-          '-b:a', '128k'
+          '-c:v',
+          'libx264',
+          '-preset',
+          'medium',
+          '-crf',
+          '23',
+          '-maxrate',
+          '2M',
+          '-bufsize',
+          '4M',
+          '-movflags',
+          '+faststart', // Enable streaming
+          '-c:a',
+          'aac',
+          '-b:a',
+          '128k',
         ])
         .output(optimizedPath)
         .on('progress', (progress) => {
@@ -235,8 +243,8 @@ export class VideoProcessor {
       ffmpeg.ffprobe(filePath, (err, metadata) => {
         if (err) return reject(err)
 
-        const videoStream = metadata.streams.find(s => s.codec_type === 'video')
-        const audioStream = metadata.streams.find(s => s.codec_type === 'audio')
+        const videoStream = metadata.streams.find((s) => s.codec_type === 'video')
+        const audioStream = metadata.streams.find((s) => s.codec_type === 'audio')
 
         resolve({
           hasVideo: !!videoStream,
@@ -244,7 +252,7 @@ export class VideoProcessor {
           duration: metadata.format.duration || 0,
           videoCodec: videoStream?.codec_name,
           audioCodec: audioStream?.codec_name,
-          resolution: videoStream ? `${videoStream.width}x${videoStream.height}` : undefined
+          resolution: videoStream ? `${videoStream.width}x${videoStream.height}` : undefined,
         })
       })
     })
@@ -254,14 +262,14 @@ export class VideoProcessor {
     if (!fs.existsSync(this.TEMP_DIR)) return
 
     const tempFiles = fs.readdirSync(this.TEMP_DIR)
-    
-    tempFiles.forEach(file => {
+
+    tempFiles.forEach((file) => {
       const fullPath = path.join(this.TEMP_DIR, file)
       if (!keepFiles.includes(fullPath)) {
         try {
           const stats = fs.statSync(fullPath)
           const ageHours = (Date.now() - stats.mtime.getTime()) / (1000 * 60 * 60)
-          
+
           // Clean up files older than 1 hour
           if (ageHours > 1) {
             fs.unlinkSync(fullPath)

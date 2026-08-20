@@ -11,20 +11,20 @@ const checks = [
     name: 'ffmpeg',
     required: true,
     hint: 'brew install ffmpeg',
-    enables: 'all audio/video processing (required)'
+    enables: 'all audio/video processing (required)',
   },
   {
     name: 'yt-dlp',
     required: false,
     hint: 'brew install yt-dlp',
-    enables: 'YouTube audio + karaoke video download'
+    enables: 'YouTube audio + karaoke video download',
   },
   {
     name: 'demucs',
     required: false,
     hint: 'pipx install demucs   (or: pip install demucs)',
-    enables: 'high-quality AI vocal separation ("fast" ffmpeg fallback works without it)'
-  }
+    enables: 'high-quality AI vocal separation ("fast" ffmpeg fallback works without it)',
+  },
 ]
 
 function which(tool) {
@@ -43,7 +43,9 @@ if (fs.existsSync(nvmrcPath)) {
   const wanted = fs.readFileSync(nvmrcPath, 'utf8').trim()
   const actual = process.versions.node.split('.')[0]
   const ok = wanted === actual
-  console.log(`${ok ? '✅' : '⚠️ '} node v${process.versions.node} (${ok ? 'matches' : `expected v${wanted}, see .nvmrc`})`)
+  console.log(
+    `${ok ? '✅' : '⚠️ '} node v${process.versions.node} (${ok ? 'matches' : `expected v${wanted}, see .nvmrc`})`
+  )
 }
 
 for (const check of checks) {

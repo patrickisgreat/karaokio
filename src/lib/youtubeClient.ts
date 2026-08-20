@@ -1,4 +1,5 @@
 import youtubedl from 'youtube-dl-exec'
+import { resolveDataPath } from './paths'
 import path from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
@@ -20,7 +21,7 @@ export interface KaraokeSearchResult {
 }
 
 export class YouTubeClient {
-  private static readonly DOWNLOAD_DIR = process.env.YOUTUBE_VIDEO_DIR || path.join(process.cwd(), 'youtube_videos')
+  private static readonly DOWNLOAD_DIR = resolveDataPath('YOUTUBE_VIDEO_DIR', 'youtube_videos')
   private static readonly MAX_DURATION = 600 // 10 minutes max
 
   static {
@@ -31,7 +32,7 @@ export class YouTubeClient {
   }
 
   static async searchKaraokeVideos(
-    title: string, 
+    title: string,
     artist: string,
     limit: number = 10
   ): Promise<KaraokeSearchResult[]> {
@@ -41,7 +42,7 @@ export class YouTubeClient {
       `${artist} - ${title} karaoke`,
       `${title} karaoke lyrics`,
       `${artist} ${title} instrumental karaoke`,
-      `${title} sing along karaoke`
+      `${title} sing along karaoke`,
     ]
 
     const allResults: KaraokeSearchResult[] = []
@@ -49,14 +50,11 @@ export class YouTubeClient {
     for (const query of searchQueries) {
       try {
         console.log(`Searching YouTube for: ${query}`)
-        
-        const searchResults = await youtubedl(
-          `ytsearch${limit}:${query}`,
-          {
-            dumpJson: true,
-            noWarnings: true
-          }
-        )
+
+        const searchResults = await youtubedl(`ytsearch${limit}:${query}`, {
+          dumpJson: true,
+          noWarnings: true,
+        })
 
         // Handle both single result and array
         const videos = Array.isArray(searchResults) ? searchResults : [searchResults]
@@ -64,19 +62,21 @@ export class YouTubeClient {
         const karaokeResults = videos
           .filter((video: any) => {
             if (!video || !video.title) return false
-            
+
             const titleLower = video.title.toLowerCase()
             const artistLower = artist.toLowerCase()
             const songLower = title.toLowerCase()
-            
+
             // Must contain the song/artist and karaoke-related terms
-            const hasArtistOrSong = titleLower.includes(artistLower) || titleLower.includes(songLower)
-            const hasKaraokeTerms = titleLower.includes('karaoke') || 
-                                  titleLower.includes('instrumental') || 
-                                  titleLower.includes('lyrics') ||
-                                  titleLower.includes('sing along') ||
-                                  titleLower.includes('backing track')
-            
+            const hasArtistOrSong =
+              titleLower.includes(artistLower) || titleLower.includes(songLower)
+            const hasKaraokeTerms =
+              titleLower.includes('karaoke') ||
+              titleLower.includes('instrumental') ||
+              titleLower.includes('lyrics') ||
+              titleLower.includes('sing along') ||
+              titleLower.includes('backing track')
+
             return hasArtistOrSong && hasKaraokeTerms
           })
           .map((video: any) => this.scoreKaraokeRelevance(video, title, artist))
@@ -91,20 +91,18 @@ export class YouTubeClient {
 
     // Remove duplicates and sort by relevance
     const uniqueResults = this.removeDuplicates(allResults)
-    return uniqueResults
-      .sort((a, b) => b.relevanceScore - a.relevanceScore)
-      .slice(0, limit)
+    return uniqueResults.sort((a, b) => b.relevanceScore - a.relevanceScore).slice(0, limit)
   }
 
   private static scoreKaraokeRelevance(
-    video: any, 
-    title: string, 
+    video: any,
+    title: string,
     artist: string
   ): KaraokeSearchResult {
     const titleLower = video.title.toLowerCase()
     const artistLower = artist.toLowerCase()
     const songLower = title.toLowerCase()
-    
+
     let score = 0
     let isLyricVideo = false
     let isOfficialKaraoke = false
@@ -125,7 +123,7 @@ export class YouTubeClient {
     if (titleLower.includes('instrumental')) score += 0.3
     if (titleLower.includes('backing track')) score += 0.25
     if (titleLower.includes('sing along')) score += 0.2
-    
+
     if (titleLower.includes('lyrics')) {
       score += 0.15
       isLyricVideo = true
@@ -146,11 +144,11 @@ export class YouTubeClient {
         duration: video.duration || 0,
         url: `https://youtube.com/watch?v=${video.id}`,
         thumbnail: video.thumbnail || '',
-        uploader: video.uploader || ''
+        uploader: video.uploader || '',
       },
       relevanceScore: Math.min(score, 1.0),
       isLyricVideo,
-      isOfficialKaraoke
+      isOfficialKaraoke,
     }
   }
 
@@ -162,11 +160,12 @@ export class YouTubeClient {
   ): Promise<string | null> {
     try {
       // Generate unique filename
-      const hash = crypto.createHash('md5')
+      const hash = crypto
+        .createHash('md5')
         .update(`${artist}_${title}`)
         .digest('hex')
         .substring(0, 8)
-      
+
       const filename = `${artist.replace(/[^a-z0-9]/gi, '_')}_${title.replace(/[^a-z0-9]/gi, '_')}_${hash}.%(ext)s`
       const outputTemplate = path.join(this.DOWNLOAD_DIR, filename)
 
@@ -177,13 +176,13 @@ export class YouTubeClient {
         format: 'best[height<=1080][ext=mp4]/best[ext=mp4]/best',
         output: outputTemplate,
         writeInfoJson: true,
-        noWarnings: true
+        noWarnings: true,
       })
 
       // Find the downloaded file
       const baseFilename = filename.replace('.%(ext)s', '')
       const possibleExtensions = ['.mp4', '.webm', '.mkv']
-      
+
       for (const ext of possibleExtensions) {
         const fullPath = path.join(this.DOWNLOAD_DIR, baseFilename + ext)
         if (fs.existsSync(fullPath)) {
@@ -193,7 +192,6 @@ export class YouTubeClient {
       }
 
       throw new Error('Downloaded file not found')
-      
     } catch (error) {
       console.error('YouTube download failed:', error)
       return null
@@ -201,13 +199,13 @@ export class YouTubeClient {
   }
 
   static async getBestKaraokeVideo(
-    title: string, 
+    title: string,
     artist: string
   ): Promise<{ video: YouTubeVideo; filePath: string } | null> {
     try {
       // Search for karaoke videos
       const results = await this.searchKaraokeVideos(title, artist, 5)
-      
+
       if (results.length === 0) {
         console.warn(`No karaoke videos found for: ${artist} - ${title}`)
         return null
@@ -216,17 +214,13 @@ export class YouTubeClient {
       // Try downloading the best matches
       for (const result of results) {
         console.log(`Trying to download: ${result.video.title} (score: ${result.relevanceScore})`)
-        
-        const filePath = await this.downloadKaraokeVideo(
-          result.video.url,
-          title,
-          artist
-        )
-        
+
+        const filePath = await this.downloadKaraokeVideo(result.video.url, title, artist)
+
         if (filePath && fs.existsSync(filePath)) {
           return {
             video: result.video,
-            filePath
+            filePath,
           }
         }
       }
@@ -240,7 +234,7 @@ export class YouTubeClient {
 
   private static removeDuplicates(results: KaraokeSearchResult[]): KaraokeSearchResult[] {
     const seen = new Set<string>()
-    return results.filter(result => {
+    return results.filter((result) => {
       const key = result.video.id
       if (seen.has(key)) return false
       seen.add(key)
@@ -252,18 +246,19 @@ export class YouTubeClient {
     if (!fs.existsSync(this.DOWNLOAD_DIR)) {
       return []
     }
-    
-    return fs.readdirSync(this.DOWNLOAD_DIR)
-      .filter(file => /\.(mp4|webm|mkv)$/i.test(file))
-      .map(file => path.join(this.DOWNLOAD_DIR, file))
+
+    return fs
+      .readdirSync(this.DOWNLOAD_DIR)
+      .filter((file) => /\.(mp4|webm|mkv)$/i.test(file))
+      .map((file) => path.join(this.DOWNLOAD_DIR, file))
   }
 
   static cleanup(keepFiles: string[] = []) {
     if (!fs.existsSync(this.DOWNLOAD_DIR)) return
 
     const allFiles = fs.readdirSync(this.DOWNLOAD_DIR)
-    
-    allFiles.forEach(file => {
+
+    allFiles.forEach((file) => {
       const fullPath = path.join(this.DOWNLOAD_DIR, file)
       if (!keepFiles.includes(fullPath)) {
         try {

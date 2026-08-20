@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireParty } from '@/lib/partyAuth'
 import { KaraokeDB } from '@/lib/database'
 
 export async function GET(request: NextRequest) {
+  const auth = requireParty(request)
+  if ('error' in auth) return auth.error
+
   try {
     const queue = KaraokeDB.getQueue()
     const current = KaraokeDB.getCurrentSong()
 
     return NextResponse.json({
       current,
-      queue: queue.filter(song => song.status !== 'playing'),
-      total: queue.length
+      queue: queue.filter((song) => song.status !== 'playing'),
+      total: queue.length,
     })
   } catch (error) {
     console.error('Get queue failed:', error)
@@ -18,6 +22,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const auth = requireParty(request, { host: true })
+  if ('error' in auth) return auth.error
+
   try {
     const { searchParams } = new URL(request.url)
     const songId = searchParams.get('songId')

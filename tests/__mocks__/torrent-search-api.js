@@ -3,5 +3,5 @@
 module.exports = {
   enableProvider: jest.fn(),
   disableProvider: jest.fn(),
-  search: jest.fn(() => Promise.resolve([]))
+  search: jest.fn(() => Promise.resolve([])),
 }

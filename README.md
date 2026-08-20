@@ -5,19 +5,22 @@ AI-powered karaoke queue system that transforms any song into karaoke with vocal
 ## Features
 
 ### 🎵 Complete Karaoke Pipeline
+
 - **AI Vocal Separation**: Demucs or FFmpeg processing
 - **Smart Song Search**: Spotify, MusicBrainz, and local library integration
 - **Lyrics Synchronization**: AI-powered timing with multiple APIs
 - **Video Generation**: Animated backgrounds with scrolling lyrics
 - **Multiple Formats**: MP4 video or audio + LRC files
 
-### 👥 Queue Management System  
+### 👥 Queue Management System
+
 - **Multi-User Support**: Everyone can add songs with their name
 - **Real-Time Status**: Processing progress and estimated wait times
 - **Queue Controls**: Skip, remove, or reorder songs
 - **Auto-Advance**: Next person's song starts automatically
 
 ### 🎮 Full-Screen Karaoke Experience
+
 - **Professional Player**: Large lyrics with smooth transitions
 - **Progress Tracking**: Visual timeline and song completion
 - **Party Controls**: Skip song or mark complete
@@ -26,25 +29,28 @@ AI-powered karaoke queue system that transforms any song into karaoke with vocal
 ## Architecture
 
 ### Backend (Next.js API Routes)
+
 ```
 /api/queue/add          # Add song to queue
-/api/queue              # Get current state  
+/api/queue              # Get current state
 /api/queue/[id]/start   # Start singing
 /api/upload             # Upload audio files
 /api/songs/search       # Search music databases
 ```
 
 ### Processing Pipeline
+
 ```
-User Request → Song Search → Audio Acquisition → 
+User Request → Song Search → Audio Acquisition →
 Vocal Separation → Lyrics Sync → Video Generation → Ready to Sing
 ```
 
 ### Data Flow
+
 ```
 1. User adds song (name + search query)
 2. Background job processes audio with Demucs
-3. Lyrics fetched and synchronized with timestamps  
+3. Lyrics fetched and synchronized with timestamps
 4. Video generated with animated background + lyrics
 5. Song marked "ready" in queue
 6. User clicks "Start Singing" → Full-screen player
@@ -54,7 +60,7 @@ Vocal Separation → Lyrics Sync → Video Generation → Ready to Sing
 
 - **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
 - **Database**: SQLite with better-sqlite3
-- **Audio Processing**: Demucs, FFmpeg  
+- **Audio Processing**: Demucs, FFmpeg
 - **Video Processing**: FFmpeg with complex filters and audio replacement
 - **Content Acquisition**: WebTorrent for audio, YouTube-dl for karaoke videos
 - **APIs**: Spotify, MusicBrainz, Lyrics.ovh, QuickLRC, Genius, Musixmatch
@@ -80,14 +86,16 @@ npm run dev
 Karaokio can **automatically find, download, and process any song** into karaoke format:
 
 ### Complete Autonomous Flow
+
 ```
-User Request → Cache Check → Torrent Search → YouTube Karaoke Video → 
+User Request → Cache Check → Torrent Search → YouTube Karaoke Video →
 Vocal Separation → Lyrics Sync → Audio Replacement → Ready to Sing!
 ```
 
 **Step-by-Step Process:**
+
 1. 🔍 **Cache Check**: Instantly serve if song already processed
-2. 📥 **Torrent Download**: Find and download original song via torrents  
+2. 📥 **Torrent Download**: Find and download original song via torrents
 3. 🎥 **YouTube Search**: Download matching karaoke video automatically
 4. 🎙️ **Vocal Separation**: Remove vocals with Demucs AI
 5. 📝 **Lyrics Sync**: Fetch and synchronize lyrics with timestamps
@@ -98,6 +106,7 @@ Vocal Separation → Lyrics Sync → Audio Replacement → Ready to Sing!
 ### 🔧 Configuration & Security
 
 **All sensitive data is centralized and never committed:**
+
 - Copy `.env.example` to `.env.local`
 - Add your API keys (Spotify, Genius, etc.)
 - Configure torrent/YouTube settings
@@ -106,11 +115,13 @@ Vocal Separation → Lyrics Sync → Audio Replacement → Ready to Sing!
 ### Real-World Example
 
 **User Action:**
+
 ```
 Alice adds: "Don't Stop Me Now Queen"
 ```
 
 **System Response (Fully Automatic):**
+
 ```
 [5 seconds]  ✅ Cache miss - starting autonomous processing
 [30 seconds] 📥 Downloaded from torrent: "Queen - Don't Stop Me Now.mp3"
@@ -123,9 +134,10 @@ Alice adds: "Don't Stop Me Now Queen"
 ```
 
 ### File Organization
+
 ```
 uploads/          # User uploaded audio
-downloads/        # Torrent downloads  
+downloads/        # Torrent downloads
 youtube_videos/   # Downloaded karaoke videos
 cache/           # Smart caching system
 output/          # Final karaoke files

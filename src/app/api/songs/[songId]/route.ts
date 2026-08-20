@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireParty } from '@/lib/partyAuth'
 import { KaraokeDB } from '@/lib/database'
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { songId: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { songId: string } }) {
+  const auth = requireParty(request)
+  if ('error' in auth) return auth.error
+
   try {
     const { songId } = params
 
@@ -19,9 +20,8 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      song
+      song,
     })
-
   } catch (error) {
     console.error('Get song failed:', error)
     return NextResponse.json({ error: 'Failed to get song' }, { status: 500 })

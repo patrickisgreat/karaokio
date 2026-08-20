@@ -1,20 +1,20 @@
 'use client'
 
+import { redirectIfUnauthed } from '@/lib/clientAuth'
 import { useState } from 'react'
 
 export default function SearchInterface() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
-  const [userName, setUserName] = useState('')
   const [message, setMessage] = useState('')
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!searchQuery.trim()) return
-    
+
     setIsSearching(true)
     setMessage('')
-    
+
     try {
       const response = await fetch('/api/queue/add', {
         method: 'POST',
@@ -23,14 +23,14 @@ export default function SearchInterface() {
         },
         body: JSON.stringify({
           searchQuery: searchQuery.trim(),
-          userName: userName || 'Anonymous',
           processingQuality: 'balanced',
-          outputFormat: 'wav'
+          outputFormat: 'wav',
         }),
       })
+      if (redirectIfUnauthed(response)) return
 
       const result = await response.json()
-      
+
       if (result.success) {
         setMessage(`✅ "${searchQuery}" added to queue! Processing will begin automatically.`)
         setSearchQuery('')
@@ -66,26 +66,17 @@ export default function SearchInterface() {
                 {isSearching ? 'Adding...' : 'Add to Queue'}
               </button>
             </div>
-            
-            <div>
-              <input
-                type="text"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                placeholder="Your name (optional)"
-                className="w-full px-4 py-2 text-sm rounded-lg border border-gray-300 focus:border-blue-500 focus:outline-none transition-colors"
-                disabled={isSearching}
-              />
-            </div>
           </div>
         </form>
 
         {message && (
-          <div className={`mb-6 p-4 rounded-lg ${
-            message.includes('✅') 
-              ? 'bg-green-100 text-green-800 border border-green-200' 
-              : 'bg-red-100 text-red-800 border border-red-200'
-          }`}>
+          <div
+            className={`mb-6 p-4 rounded-lg ${
+              message.includes('✅')
+                ? 'bg-green-100 text-green-800 border border-green-200'
+                : 'bg-red-100 text-red-800 border border-red-200'
+            }`}
+          >
             {message}
           </div>
         )}

@@ -1,4 +1,5 @@
 import * as crypto from 'crypto'
+import { resolveDataPath } from './paths'
 import * as fs from 'fs'
 import * as path from 'path'
 import db from './database'
@@ -36,7 +37,7 @@ export interface ProcessedSong {
 }
 
 export class CacheManager {
-  private static readonly CACHE_DIR = process.env.CACHE_DIR || path.join(process.cwd(), 'cache')
+  private static readonly CACHE_DIR = resolveDataPath('CACHE_DIR', 'cache')
 
   static {
     // Ensure cache directory exists
@@ -68,10 +69,18 @@ export class CacheManager {
     }
 
     // Try to add new columns to existing songs table (ignore errors if they exist)
-    try { db.exec('ALTER TABLE songs ADD COLUMN cache_key TEXT'); } catch {}
-    try { db.exec('ALTER TABLE songs ADD COLUMN torrent_magnet TEXT'); } catch {}
-    try { db.exec('ALTER TABLE songs ADD COLUMN youtube_video_id TEXT'); } catch {}
-    try { db.exec('ALTER TABLE songs ADD COLUMN processing_method TEXT'); } catch {}
+    try {
+      db.exec('ALTER TABLE songs ADD COLUMN cache_key TEXT')
+    } catch {}
+    try {
+      db.exec('ALTER TABLE songs ADD COLUMN torrent_magnet TEXT')
+    } catch {}
+    try {
+      db.exec('ALTER TABLE songs ADD COLUMN youtube_video_id TEXT')
+    } catch {}
+    try {
+      db.exec('ALTER TABLE songs ADD COLUMN processing_method TEXT')
+    } catch {}
   }
 
   static generateCacheKey(title: string, artist: string, quality: string): string {
@@ -79,14 +88,18 @@ export class CacheManager {
     return crypto.createHash('sha256').update(normalized).digest('hex').substring(0, 16)
   }
 
-  static async checkCache(title: string, artist: string, quality: string): Promise<ProcessedSong | null> {
+  static async checkCache(
+    title: string,
+    artist: string,
+    quality: string
+  ): Promise<ProcessedSong | null> {
     const cacheKey = this.generateCacheKey(title, artist, quality)
-    
+
     const stmt = db.prepare(`
       SELECT * FROM processed_cache 
       WHERE cache_key = ?
     `)
-    
+
     const row = stmt.get(cacheKey) as any
     if (!row) return null
 
@@ -95,7 +108,7 @@ export class CacheManager {
 
     // Verify files still exist
     const files: ProcessedSong['files'] = {}
-    
+
     if (row.original_audio_path && fs.existsSync(row.original_audio_path)) {
       files.original = row.original_audio_path
     }
@@ -117,7 +130,7 @@ export class CacheManager {
     }
 
     console.log(`Cache hit for: ${artist} - ${title} (${quality})`)
-    
+
     return {
       cacheKey,
       files,
@@ -125,8 +138,8 @@ export class CacheManager {
         title: row.title,
         artist: row.artist,
         quality: row.processing_quality,
-        youtubeVideoId: row.youtube_video_id
-      }
+        youtubeVideoId: row.youtube_video_id,
+      },
     }
   }
 
@@ -167,13 +180,17 @@ export class CacheManager {
       totalSize
     )
 
-    console.log(`Added to cache: ${artist} - ${title} (${quality}) [${(totalSize / 1024 / 1024).toFixed(1)}MB]`)
-    
+    console.log(
+      `Added to cache: ${artist} - ${title} (${quality}) [${(totalSize / 1024 / 1024).toFixed(1)}MB]`
+    )
+
     return cacheKey
   }
 
   private static updateLastAccessed(cacheKey: string) {
-    const stmt = db.prepare('UPDATE processed_cache SET last_accessed = CURRENT_TIMESTAMP WHERE cache_key = ?')
+    const stmt = db.prepare(
+      'UPDATE processed_cache SET last_accessed = CURRENT_TIMESTAMP WHERE cache_key = ?'
+    )
     stmt.run(cacheKey)
   }
 
@@ -196,19 +213,21 @@ export class CacheManager {
         MAX(created_at) as newest
       FROM processed_cache
     `)
-    
+
     const row = stmt.get() as any
-    
+
     return {
       totalEntries: row.count || 0,
       totalSizeMB: Math.round((row.total_size || 0) / 1024 / 1024),
       oldestEntry: row.oldest ? new Date(row.oldest) : null,
-      newestEntry: row.newest ? new Date(row.newest) : null
+      newestEntry: row.newest ? new Date(row.newest) : null,
     }
   }
 
   static cleanupOldEntries(maxAgeDays: number = 30, maxEntries: number = 100) {
-    console.log(`Cleaning up cache entries older than ${maxAgeDays} days or exceeding ${maxEntries} entries...`)
+    console.log(
+      `Cleaning up cache entries older than ${maxAgeDays} days or exceeding ${maxEntries} entries...`
+    )
 
     // Get entries to remove (old or excess)
     const stmt = db.prepare(`
@@ -224,12 +243,12 @@ export class CacheManager {
     `)
 
     const entriesToRemove = stmt.all() as any[]
-    
-    entriesToRemove.forEach(entry => {
+
+    entriesToRemove.forEach((entry) => {
       // Remove files
-      [entry.original_audio_path, entry.instrumental_path, entry.lyrics_path, entry.video_path]
+      ;[entry.original_audio_path, entry.instrumental_path, entry.lyrics_path, entry.video_path]
         .filter(Boolean)
-        .forEach(filePath => {
+        .forEach((filePath) => {
           try {
             if (fs.existsSync(filePath)) {
               fs.unlinkSync(filePath)
@@ -252,10 +271,10 @@ export class CacheManager {
       SELECT * FROM processed_cache
       ORDER BY last_accessed DESC
     `)
-    
+
     const rows = stmt.all() as any[]
-    
-    return rows.map(row => ({
+
+    return rows.map((row) => ({
       id: row.id,
       cacheKey: row.cache_key,
       title: row.title,
@@ -268,7 +287,7 @@ export class CacheManager {
       processingQuality: row.processing_quality,
       createdAt: new Date(row.created_at),
       lastAccessed: new Date(row.last_accessed),
-      fileSize: row.file_size
+      fileSize: row.file_size,
     }))
   }
 }

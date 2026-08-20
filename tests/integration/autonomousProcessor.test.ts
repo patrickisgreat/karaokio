@@ -33,7 +33,7 @@ describe('Autonomous Processor Integration', () => {
   const testUser = {
     id: uuidv4(),
     name: 'Test User',
-    color: 'bg-blue-500'
+    color: 'bg-blue-500',
   }
 
   const testTempDir = path.join(__dirname, '../temp/processor-test')
@@ -54,7 +54,7 @@ describe('Autonomous Processor Integration', () => {
       songTitle: testTitle,
       artist: testArtist,
       requestedAt: new Date(),
-      status: 'queued'
+      status: 'queued',
     })
 
     // Reset all mocks
@@ -78,20 +78,20 @@ describe('Autonomous Processor Integration', () => {
     // Mock successful torrent download
     const mockAudioPath = path.join(testTempDir, 'downloaded-audio.mp3')
     fs.writeFileSync(mockAudioPath, 'mock audio content')
-    
+
     MockedTorrentClient.findBestMatch.mockResolvedValue({
       title: 'Queen - Bohemian Rhapsody',
       size: '5MB',
       seeders: 50,
       magnet: 'magnet:test',
-      provider: 'test'
+      provider: 'test',
     })
     MockedTorrentClient.downloadAudio.mockResolvedValue(mockAudioPath)
 
     // Mock successful YouTube download
     const mockVideoPath = path.join(testTempDir, 'karaoke-video.mp4')
     fs.writeFileSync(mockVideoPath, 'mock video content')
-    
+
     MockedYouTubeClient.getBestKaraokeVideo.mockResolvedValue({
       video: {
         id: 'youtube-123',
@@ -99,18 +99,18 @@ describe('Autonomous Processor Integration', () => {
         duration: 355,
         url: 'https://youtube.com/watch?v=youtube-123',
         thumbnail: 'thumb.jpg',
-        uploader: 'KaraokeChannel'
+        uploader: 'KaraokeChannel',
       },
-      filePath: mockVideoPath
+      filePath: mockVideoPath,
     })
 
     // Mock successful audio processing
     const mockInstrumentalPath = path.join(testTempDir, 'instrumental.wav')
     fs.writeFileSync(mockInstrumentalPath, 'mock instrumental')
-    
+
     MockedAudioProcessor.separateVocals.mockResolvedValue({
       instrumental: mockInstrumentalPath,
-      vocals: path.join(testTempDir, 'vocals.wav')
+      vocals: path.join(testTempDir, 'vocals.wav'),
     })
 
     // Mock successful lyrics processing
@@ -118,21 +118,21 @@ describe('Autonomous Processor Integration', () => {
     MockedLyricsProcessor.fetchLyrics.mockResolvedValue(mockLyrics)
     MockedLyricsProcessor.smartSynchronize.mockResolvedValue([
       { startTime: 500, endTime: 3000, text: 'Is this the real life?' },
-      { startTime: 3000, endTime: 5500, text: 'Is this just fantasy?' }
+      { startTime: 3000, endTime: 5500, text: 'Is this just fantasy?' },
     ])
     MockedLyricsProcessor.convertToLRC.mockReturnValue(mockLyrics)
 
     // Mock successful video processing
     const mockFinalVideoPath = path.join(testTempDir, 'final_karaoke.mp4')
     fs.writeFileSync(mockFinalVideoPath, 'mock final video')
-    
+
     MockedVideoProcessor.replaceAudio.mockResolvedValue(mockFinalVideoPath)
     MockedVideoProcessor.optimizeForStreaming.mockResolvedValue(mockFinalVideoPath)
 
     // Run the autonomous processor
     await processKaraokeSong(testSongId, {
       quality: 'high',
-      outputFormat: 'wav'
+      outputFormat: 'wav',
     })
 
     // Verify the song status was updated to ready
@@ -161,18 +161,18 @@ describe('Autonomous Processor Integration', () => {
         original: path.join(testTempDir, 'cached-original.mp3'),
         instrumental: path.join(testTempDir, 'cached-instrumental.wav'),
         lyrics: path.join(testTempDir, 'cached-lyrics.lrc'),
-        video: path.join(testTempDir, 'cached-video.mp4')
+        video: path.join(testTempDir, 'cached-video.mp4'),
       },
       metadata: {
         title: testTitle,
         artist: testArtist,
         quality: 'high',
-        youtubeVideoId: 'cached-youtube-id'
-      }
+        youtubeVideoId: 'cached-youtube-id',
+      },
     }
 
     // Create mock cached files
-    Object.values(mockCachedResult.files).forEach(filePath => {
+    Object.values(mockCachedResult.files).forEach((filePath) => {
       if (filePath) {
         fs.writeFileSync(filePath, 'cached content')
       }
@@ -183,7 +183,7 @@ describe('Autonomous Processor Integration', () => {
     // Run the processor
     await processKaraokeSong(testSongId, {
       quality: 'high',
-      outputFormat: 'wav'
+      outputFormat: 'wav',
     })
 
     // Verify cache was checked
@@ -213,7 +213,7 @@ describe('Autonomous Processor Integration', () => {
     // Run the processor
     await processKaraokeSong(testSongId, {
       quality: 'high',
-      outputFormat: 'wav'
+      outputFormat: 'wav',
     })
 
     // Verify song was marked as failed
@@ -231,13 +231,13 @@ describe('Autonomous Processor Integration', () => {
 
     const mockAudioPath = path.join(testTempDir, 'downloaded-audio.mp3')
     fs.writeFileSync(mockAudioPath, 'mock audio content')
-    
+
     MockedTorrentClient.findBestMatch.mockResolvedValue({
       title: 'Queen - Bohemian Rhapsody',
       size: '5MB',
       seeders: 50,
       magnet: 'magnet:test',
-      provider: 'test'
+      provider: 'test',
     })
     MockedTorrentClient.downloadAudio.mockResolvedValue(mockAudioPath)
 
@@ -247,10 +247,10 @@ describe('Autonomous Processor Integration', () => {
     // Mock successful audio processing and video generation
     const mockInstrumentalPath = path.join(testTempDir, 'instrumental.wav')
     fs.writeFileSync(mockInstrumentalPath, 'mock instrumental')
-    
+
     MockedAudioProcessor.separateVocals.mockResolvedValue({
       instrumental: mockInstrumentalPath,
-      vocals: path.join(testTempDir, 'vocals.wav')
+      vocals: path.join(testTempDir, 'vocals.wav'),
     })
 
     MockedLyricsProcessor.fetchLyrics.mockResolvedValue('mock lyrics')
@@ -267,7 +267,7 @@ describe('Autonomous Processor Integration', () => {
     // Run the processor
     await processKaraokeSong(testSongId, {
       quality: 'high',
-      outputFormat: 'wav'
+      outputFormat: 'wav',
     })
 
     // Verify song was still processed successfully
@@ -283,13 +283,13 @@ describe('Autonomous Processor Integration', () => {
     jest.spyOn(CacheManager, 'checkCache').mockResolvedValue(null)
 
     // Mock torrent search that resolves slowly (and empty)
-    MockedTorrentClient.findBestMatch.mockImplementation(() =>
-      new Promise(resolve => setTimeout(() => resolve(null), 200))
+    MockedTorrentClient.findBestMatch.mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve(null), 200))
     )
 
     await processKaraokeSong(testSongId, {
       quality: 'high',
-      outputFormat: 'wav'
+      outputFormat: 'wav',
     })
 
     // Should eventually fail due to timeout/no audio found
