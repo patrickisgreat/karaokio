@@ -52,3 +52,5 @@ jobs:
           # Post a visible PR comment with the review summary + progress.
           # Without this, a clean PR produces no visible output at all.
           track_progress: true
+          # TEMP DEBUG: reveal the SDK error that fails runs since ~21:45Z; revert after diagnosis
+          show_full_output: true
