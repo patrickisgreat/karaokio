@@ -39,11 +39,20 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: us-east-1
 
+      # ECR hosts are account-scoped; derive the host from the assumed role
+      # so no account id is hardcoded in the repo.
+      - name: Resolve ECR host
+        id: ecr
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "host=${ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com" >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         id: build
         uses: patrickisgreat/actions-toolkit/actions/docker-build-push@main
         with:
           registry: ecr
+          registry-host: ${{ steps.ecr.outputs.host }}
           image: karaokio/app
           push: 'true'
           cache: gha
