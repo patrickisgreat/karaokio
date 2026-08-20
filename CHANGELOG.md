@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/patrickisgreat/karaokio/compare/v1.1.0...v1.1.1) (2026-08-20)
+
+
+### Bug Fixes
+
+* exempt CHANGELOG.md from the prettier gate ([c97a3bd](https://github.com/patrickisgreat/karaokio/commit/c97a3bd7c5e4b40ba4f8017b7127627886b44100))
+* exempt release-please's CHANGELOG.md from the format gate ([de6da7e](https://github.com/patrickisgreat/karaokio/commit/de6da7e62b2bab61c5498db2de116267b1866ecd))
+
 ## [1.1.0](https://github.com/patrickisgreat/karaokio/compare/v1.0.0...v1.1.0) (2026-08-20)
 
 
