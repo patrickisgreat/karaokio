@@ -8,13 +8,13 @@ const nextConfig = {
       // Exclude problematic modules from server-side bundling
       config.externals = config.externals || []
       config.externals.push({
-        'webtorrent': 'webtorrent',
+        webtorrent: 'webtorrent',
         'torrent-search-api': 'torrent-search-api',
         'utp-native': 'utp-native',
-        'fs-native-extensions': 'fs-native-extensions'
+        'fs-native-extensions': 'fs-native-extensions',
       })
     }
-    
+
     // Ignore node modules with native dependencies during build
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -23,13 +23,13 @@ const nextConfig = {
       tls: false,
       crypto: false,
     }
-    
+
     return config
   },
   experimental: {
     // Disable static page generation for API routes that use dynamic imports
-    serverComponentsExternalPackages: ['webtorrent', 'torrent-search-api']
-  }
+    serverComponentsExternalPackages: ['webtorrent', 'torrent-search-api'],
+  },
 }
 
 module.exports = nextConfig

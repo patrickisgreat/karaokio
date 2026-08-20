@@ -1,0 +1,54 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    # NOTE: `synchronize` is intentionally omitted. It fires on every push to an
+    # open PR, so leaving it in re-runs a full /code-review on every commit —
+    # the dominant cost driver. We review once when a PR opens (and again on
+    # reopen, or when a draft is marked ready). Re-trigger a fresh review by
+    # @claude-ing the PR or closing/reopening it.
+    types: [opened, ready_for_review, reopened]
+
+jobs:
+  claude-review:
+    # Skip Dependabot PRs. Dependabot-triggered workflows run with the
+    # "Dependabot" secret source, which does NOT expose repo Actions secrets —
+    # so secrets.CLAUDE_CODE_OAUTH_TOKEN is empty and the action falls back to
+    # OIDC, which then 401s. Dependency PRs are low-risk and human-reviewed
+    # anyway.
+    #
+    # Also skip drafts: reviewing work-in-progress burns tokens on code that's
+    # about to change. The `ready_for_review` trigger picks the PR up the
+    # moment it's marked ready.
+    if: github.actor != 'dependabot[bot]' && github.event.pull_request.draft == false
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # write (not read) is required for the action to post the review summary
+      # and inline comments back to the PR.
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Pin Sonnet for the auto-review: much cheaper per token and more
+          # than capable of PR-level correctness/cleanup review. Manual deep
+          # dives can still @claude with a bigger model.
+          claude_args: '--model claude-sonnet-4-6'
+          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+          plugins: 'code-review@claude-code-plugins'
+          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+          # Post a visible PR comment with the review summary + progress.
+          # Without this, a clean PR produces no visible output at all.
+          track_progress: true

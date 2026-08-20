@@ -14,7 +14,8 @@ export interface TorrentResult {
 
 export class TorrentClient {
   private static client: WebTorrent.Instance | null = null
-  private static readonly DOWNLOAD_DIR = process.env.DOWNLOAD_DIR || path.join(process.cwd(), 'downloads')
+  private static readonly DOWNLOAD_DIR =
+    process.env.DOWNLOAD_DIR || path.join(process.cwd(), 'downloads')
   private static readonly DEFAULT_DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000
 
   static {
@@ -40,15 +41,15 @@ export class TorrentClient {
   static async searchTorrents(query: string, limit: number = 10): Promise<TorrentResult[]> {
     try {
       console.log(`Searching torrents for: ${query}`)
-      
+
       const results = await TorrentSearchApi.search(query, 'Audio', limit)
-      
+
       return results.map((result: any) => ({
         title: result.title,
         size: result.size,
         seeders: result.seeds || 0,
         magnet: result.magnet,
-        provider: result.provider
+        provider: result.provider,
       }))
     } catch (error) {
       console.error('Torrent search failed:', error)
@@ -90,22 +91,24 @@ export class TorrentClient {
       client.add(magnet, { path: this.DOWNLOAD_DIR }, (torrent) => {
         activeTorrent = torrent
         console.log(`Torrent added: ${torrent.name}`)
-        
+
         // Find audio files in the torrent
-        const audioFiles = torrent.files.filter(file => 
+        const audioFiles = torrent.files.filter((file) =>
           /\.(mp3|wav|flac|m4a|aac|ogg)$/i.test(file.name)
         )
-        
+
         if (audioFiles.length === 0) {
           return finish(() => reject(new Error('No audio files found in torrent')))
         }
 
         // Pick the largest audio file (usually the best quality)
-        const mainAudioFile = audioFiles.reduce((largest, file) => 
+        const mainAudioFile = audioFiles.reduce((largest, file) =>
           file.length > largest.length ? file : largest
         )
 
-        console.log(`Selected audio file: ${mainAudioFile.name} (${(mainAudioFile.length / 1024 / 1024).toFixed(1)}MB)`)
+        console.log(
+          `Selected audio file: ${mainAudioFile.name} (${(mainAudioFile.length / 1024 / 1024).toFixed(1)}MB)`
+        )
 
         // Generate unique filename
         const hash = crypto.createHash('md5').update(targetTitle).digest('hex').substring(0, 8)
@@ -122,9 +125,9 @@ export class TorrentClient {
         // Start downloading the specific file
         const stream = mainAudioFile.createReadStream()
         const writeStream = fs.createWriteStream(outputPath)
-        
+
         stream.pipe(writeStream)
-        
+
         writeStream.on('finish', () => {
           console.log(`Download complete: ${outputPath}`)
           finish(() => resolve(outputPath))
@@ -138,28 +141,23 @@ export class TorrentClient {
   }
 
   static async findBestMatch(
-    title: string, 
+    title: string,
     artist: string,
     minSeeders: number = 5
   ): Promise<TorrentResult | null> {
-    const queries = [
-      `${artist} ${title}`,
-      `${title} ${artist}`,
-      `${artist} - ${title}`,
-      title
-    ]
+    const queries = [`${artist} ${title}`, `${title} ${artist}`, `${artist} - ${title}`, title]
 
     for (const query of queries) {
       const results = await this.searchTorrents(query, 20)
-      
+
       // Filter and sort by quality
       const goodResults = results
-        .filter(result => result.seeders >= minSeeders)
-        .filter(result => {
+        .filter((result) => result.seeders >= minSeeders)
+        .filter((result) => {
           const titleLower = result.title.toLowerCase()
           const artistLower = artist.toLowerCase()
           const songLower = title.toLowerCase()
-          
+
           return titleLower.includes(artistLower) && titleLower.includes(songLower)
         })
         .sort((a, b) => b.seeders - a.seeders) // Sort by seeders desc
@@ -185,9 +183,10 @@ export class TorrentClient {
     if (!fs.existsSync(this.DOWNLOAD_DIR)) {
       return []
     }
-    
-    return fs.readdirSync(this.DOWNLOAD_DIR)
-      .filter(file => /\.(mp3|wav|flac|m4a|aac|ogg)$/i.test(file))
-      .map(file => path.join(this.DOWNLOAD_DIR, file))
+
+    return fs
+      .readdirSync(this.DOWNLOAD_DIR)
+      .filter((file) => /\.(mp3|wav|flac|m4a|aac|ogg)$/i.test(file))
+      .map((file) => path.join(this.DOWNLOAD_DIR, file))
   }
 }

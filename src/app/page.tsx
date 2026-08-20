@@ -13,7 +13,7 @@ export default function Home() {
             AI-powered karaoke queue - Add your songs, wait your turn, and sing!
           </p>
         </div>
-        
+
         <div className="grid lg:grid-cols-2 gap-8">
           <CurrentSong />
           <QueueInterface />

@@ -1,0 +1,11 @@
+node_modules
+.next
+coverage
+package-lock.json
+tests/.worker-*
+uploads
+downloads
+cache
+output
+temp
+youtube_videos

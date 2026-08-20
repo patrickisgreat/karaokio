@@ -7,7 +7,7 @@ export interface KaraokeConfig {
   geniusAccessToken?: string
   musixmatchApiKey?: string
   quicklrcApiKey?: string
-  
+
   // File paths
   uploadDir: string
   outputDir: string
@@ -15,7 +15,7 @@ export interface KaraokeConfig {
   cacheDir: string
   downloadDir: string
   youtubeVideoDir: string
-  
+
   // Processing settings
   defaultProcessingQuality: 'fast' | 'balanced' | 'high'
   maxFileSize: number // bytes
@@ -23,27 +23,27 @@ export interface KaraokeConfig {
   enableTorrentDownload: boolean
   enableYouTubeDownload: boolean
   enableCache: boolean
-  
+
   // Torrent settings
   torrentTimeout: number // milliseconds
   minSeeders: number
   maxConcurrentTorrents: number
-  
+
   // YouTube settings
   youtubeTimeout: number // milliseconds
   preferOfficialKaraoke: boolean
   maxVideoQuality: string
-  
+
   // Cache settings
   cacheMaxAgeDays: number
   cacheMaxEntries: number
   cacheMaxSizeGB: number
-  
+
   // Server settings
   port: number
   host: string
   enableCors: boolean
-  
+
   // Security settings
   maxRequestsPerMinute: number
   enableRateLimit: boolean
@@ -66,14 +66,14 @@ class ConfigManager {
 
   private loadConfig(): KaraokeConfig {
     const isDevelopment = process.env.NODE_ENV !== 'production'
-    
+
     return {
       // API Keys from environment
       spotifyAccessToken: process.env.SPOTIFY_ACCESS_TOKEN,
       geniusAccessToken: process.env.GENIUS_ACCESS_TOKEN,
       musixmatchApiKey: process.env.MUSIXMATCH_API_KEY,
       quicklrcApiKey: process.env.QUICKLRC_API_KEY,
-      
+
       // File paths
       uploadDir: process.env.UPLOAD_DIR || './uploads',
       outputDir: process.env.OUTPUT_DIR || './output',
@@ -81,7 +81,7 @@ class ConfigManager {
       cacheDir: process.env.CACHE_DIR || './cache',
       downloadDir: process.env.DOWNLOAD_DIR || './downloads',
       youtubeVideoDir: process.env.YOUTUBE_VIDEO_DIR || './youtube_videos',
-      
+
       // Processing settings
       defaultProcessingQuality: (process.env.DEFAULT_QUALITY as any) || 'balanced',
       maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '52428800'), // 50MB default
@@ -89,30 +89,30 @@ class ConfigManager {
       enableTorrentDownload: process.env.ENABLE_TORRENT_DOWNLOAD !== 'false',
       enableYouTubeDownload: process.env.ENABLE_YOUTUBE_DOWNLOAD !== 'false',
       enableCache: process.env.ENABLE_CACHE !== 'false',
-      
+
       // Torrent settings
       torrentTimeout: parseInt(process.env.TORRENT_TIMEOUT || '300000'), // 5 minutes
       minSeeders: parseInt(process.env.MIN_SEEDERS || '3'),
       maxConcurrentTorrents: parseInt(process.env.MAX_CONCURRENT_TORRENTS || '3'),
-      
+
       // YouTube settings
       youtubeTimeout: parseInt(process.env.YOUTUBE_TIMEOUT || '120000'), // 2 minutes
       preferOfficialKaraoke: process.env.PREFER_OFFICIAL_KARAOKE !== 'false',
       maxVideoQuality: process.env.MAX_VIDEO_QUALITY || '1080p',
-      
+
       // Cache settings
       cacheMaxAgeDays: parseInt(process.env.CACHE_MAX_AGE_DAYS || '30'),
       cacheMaxEntries: parseInt(process.env.CACHE_MAX_ENTRIES || '100'),
       cacheMaxSizeGB: parseInt(process.env.CACHE_MAX_SIZE_GB || '10'),
-      
+
       // Server settings
       port: parseInt(process.env.PORT || '3000'),
       host: process.env.HOST || 'localhost',
       enableCors: process.env.ENABLE_CORS !== 'false',
-      
+
       // Security settings
       maxRequestsPerMinute: parseInt(process.env.MAX_REQUESTS_PER_MINUTE || '60'),
-      enableRateLimit: process.env.ENABLE_RATE_LIMIT !== 'false'
+      enableRateLimit: process.env.ENABLE_RATE_LIMIT !== 'false',
     }
   }
 
@@ -122,20 +122,29 @@ class ConfigManager {
 
   getApiKey(service: 'spotify' | 'genius' | 'musixmatch' | 'quicklrc'): string | undefined {
     switch (service) {
-      case 'spotify': return this.config.spotifyAccessToken
-      case 'genius': return this.config.geniusAccessToken
-      case 'musixmatch': return this.config.musixmatchApiKey
-      case 'quicklrc': return this.config.quicklrcApiKey
-      default: return undefined
+      case 'spotify':
+        return this.config.spotifyAccessToken
+      case 'genius':
+        return this.config.geniusAccessToken
+      case 'musixmatch':
+        return this.config.musixmatchApiKey
+      case 'quicklrc':
+        return this.config.quicklrcApiKey
+      default:
+        return undefined
     }
   }
 
   isFeatureEnabled(feature: 'torrent' | 'youtube' | 'cache'): boolean {
     switch (feature) {
-      case 'torrent': return this.config.enableTorrentDownload
-      case 'youtube': return this.config.enableYouTubeDownload
-      case 'cache': return this.config.enableCache
-      default: return false
+      case 'torrent':
+        return this.config.enableTorrentDownload
+      case 'youtube':
+        return this.config.enableYouTubeDownload
+      case 'cache':
+        return this.config.enableCache
+      default:
+        return false
     }
   }
 
@@ -147,10 +156,10 @@ class ConfigManager {
       this.config.uploadDir,
       this.config.outputDir,
       this.config.tempDir,
-      this.config.cacheDir
+      this.config.cacheDir,
     ]
 
-    requiredDirs.forEach(dir => {
+    requiredDirs.forEach((dir) => {
       try {
         const fs = require('fs')
         if (!fs.existsSync(dir)) {
@@ -188,16 +197,16 @@ class ConfigManager {
 
     return {
       valid: errors.length === 0,
-      errors
+      errors,
     }
   }
 
   printConfig(): void {
     const config = this.get()
-    
+
     console.log('\n🎤 Karaokio Configuration:')
-    console.log('=' .repeat(40))
-    
+    console.log('='.repeat(40))
+
     // Safe config (no secrets)
     const safeConfig = {
       processingQuality: config.defaultProcessingQuality,
@@ -210,12 +219,12 @@ class ConfigManager {
         spotify: !!config.spotifyAccessToken,
         genius: !!config.geniusAccessToken,
         musixmatch: !!config.musixmatchApiKey,
-        quicklrc: !!config.quicklrcApiKey
-      }
+        quicklrc: !!config.quicklrcApiKey,
+      },
     }
-    
+
     console.table(safeConfig)
-    console.log('=' .repeat(40) + '\n')
+    console.log('='.repeat(40) + '\n')
   }
 }
 
@@ -226,17 +235,17 @@ export const config = ConfigManager.getInstance()
 export function ensureDirectoriesExist(): void {
   const cfg = config.get()
   const fs = require('fs')
-  
+
   const dirs = [
     cfg.uploadDir,
     cfg.outputDir,
     cfg.tempDir,
     cfg.cacheDir,
     cfg.downloadDir,
-    cfg.youtubeVideoDir
+    cfg.youtubeVideoDir,
   ]
-  
-  dirs.forEach(dir => {
+
+  dirs.forEach((dir) => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true })
       console.log(`📁 Created directory: ${dir}`)

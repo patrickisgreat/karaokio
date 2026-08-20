@@ -33,29 +33,32 @@ async function withTimeout<T>(work: Promise<T>, ms: number, label: string): Prom
       work,
       new Promise<never>((_, reject) => {
         timer = setTimeout(() => reject(new Error(`${label} timeout`)), ms)
-      })
+      }),
     ])
   } finally {
     clearTimeout(timer)
   }
 }
 
-export async function processKaraokeSong(songId: string, options: AutonomousProcessingOptions = {}) {
-  const job: AutonomousProcessingJob = { 
-    songId, 
+export async function processKaraokeSong(
+  songId: string,
+  options: AutonomousProcessingOptions = {}
+) {
+  const job: AutonomousProcessingJob = {
+    songId,
     options: {
       quality: options.quality ?? 'high',
       outputFormat: options.outputFormat ?? 'wav',
       useCache: options.useCache ?? true,
       maxTorrentWaitTime: options.maxTorrentWaitTime ?? 5 * 60 * 1000, // 5 minutes
-      maxYouTubeWaitTime: options.maxYouTubeWaitTime ?? 2 * 60 * 1000   // 2 minutes
-    }
+      maxYouTubeWaitTime: options.maxYouTubeWaitTime ?? 2 * 60 * 1000, // 2 minutes
+    },
   }
   processingJobs.set(songId, job)
 
   try {
     console.log(`🎵 Starting autonomous karaoke processing for song ${songId}`)
-    
+
     // Get song details
     const song = KaraokeDB.getSong(songId)
     if (!song) {
@@ -67,17 +70,17 @@ export async function processKaraokeSong(songId: string, options: AutonomousProc
     // STEP 1: Check cache first
     KaraokeDB.updateSongStatus(songId, 'processing', 5)
     console.log(`🔍 Checking cache for: ${artist} - ${songTitle}`)
-    
+
     const cached = await CacheManager.checkCache(songTitle, artist, job.options.quality!)
     if (cached && job.options.useCache) {
       console.log(`✅ Cache hit! Using existing files for ${artist} - ${songTitle}`)
-      
+
       // Update database with cached paths
       KaraokeDB.updateSongPaths(songId, {
         original_audio_path: cached.files.original,
         instrumental_path: cached.files.instrumental,
         lyrics_path: cached.files.lyrics,
-        video_path: cached.files.video
+        video_path: cached.files.video,
       })
 
       KaraokeDB.updateSongStatus(songId, 'ready', 100)
@@ -87,13 +90,13 @@ export async function processKaraokeSong(songId: string, options: AutonomousProc
     // STEP 2: Acquire audio via torrents
     KaraokeDB.updateSongStatus(songId, 'processing', 10)
     console.log(`🔍 Searching torrents for: ${artist} - ${songTitle}`)
-    
+
     const torrentResult = await TorrentClient.findBestMatch(songTitle, artist, 3)
     let audioPath: string | null = null
 
     if (torrentResult) {
       console.log(`📥 Downloading from torrent: ${torrentResult.title}`)
-      
+
       try {
         audioPath = await withTimeout(
           TorrentClient.downloadAudio(
@@ -129,7 +132,7 @@ export async function processKaraokeSong(songId: string, options: AutonomousProc
     // STEP 3: Search and download YouTube karaoke video
     KaraokeDB.updateSongStatus(songId, 'processing', 30)
     console.log(`🎥 Searching YouTube for karaoke video...`)
-    
+
     let karaokeVideoPath: string | null = null
     let youtubeVideoId: string | null = null
 
@@ -152,12 +155,12 @@ export async function processKaraokeSong(songId: string, options: AutonomousProc
     // STEP 4: Vocal separation
     KaraokeDB.updateSongStatus(songId, 'processing', 45)
     console.log(`🎙️ Starting vocal separation with ${job.options.quality} quality...`)
-    
+
     const { instrumental } = await AudioProcessor.separateVocals(
       audioPath,
-      { 
-        quality: job.options.quality!, 
-        outputFormat: job.options.outputFormat! 
+      {
+        quality: job.options.quality!,
+        outputFormat: job.options.outputFormat!,
       },
       (progress) => {
         const overallProgress = 45 + Math.round(progress * 0.25) // 45-70%
@@ -171,16 +174,16 @@ export async function processKaraokeSong(songId: string, options: AutonomousProc
     // STEP 5: Fetch and sync lyrics
     KaraokeDB.updateSongStatus(songId, 'processing', 75)
     console.log(`📝 Fetching and synchronizing lyrics...`)
-    
+
     const lyrics = await LyricsProcessor.fetchLyrics(songTitle, artist)
     let lyricsPath: string | null = null
-    
+
     if (lyrics) {
       const syncedLyrics = await LyricsProcessor.smartSynchronize(lyrics, instrumental)
       const lrcContent = LyricsProcessor.convertToLRC(syncedLyrics)
       lyricsPath = path.join(path.dirname(instrumental), 'lyrics.lrc')
       fs.writeFileSync(lyricsPath, lrcContent, 'utf8')
-      
+
       KaraokeDB.updateSongPaths(songId, { lyrics_path: lyricsPath })
       console.log(`✅ Lyrics synchronized and saved`)
     } else {
@@ -190,21 +193,19 @@ export async function processKaraokeSong(songId: string, options: AutonomousProc
     // STEP 6: Create final karaoke video
     KaraokeDB.updateSongStatus(songId, 'processing', 85)
     console.log(`🎬 Creating final karaoke video...`)
-    
+
     let finalVideoPath: string
 
     if (karaokeVideoPath && fs.existsSync(karaokeVideoPath)) {
       // Replace audio in YouTube karaoke video
       console.log(`🔄 Replacing audio in karaoke video...`)
       finalVideoPath = path.join(path.dirname(instrumental), 'final_karaoke.mp4')
-      
-      await VideoProcessor.replaceAudio(
-        karaokeVideoPath,
-        instrumental,
-        finalVideoPath,
-        { method: 'replace', volumeLevel: 1.0 }
-      )
-      
+
+      await VideoProcessor.replaceAudio(karaokeVideoPath, instrumental, finalVideoPath, {
+        method: 'replace',
+        volumeLevel: 1.0,
+      })
+
       // Optimize for streaming
       const optimizedPath = await VideoProcessor.optimizeForStreaming(finalVideoPath)
       if (optimizedPath !== finalVideoPath) {
@@ -215,16 +216,12 @@ export async function processKaraokeSong(songId: string, options: AutonomousProc
       // Generate karaoke video from scratch (fallback)
       console.log(`🎨 Generating karaoke video from scratch...`)
       const { VideoGenerator } = await import('./videoGenerator')
-      
+
       finalVideoPath = path.join(path.dirname(instrumental), 'generated_karaoke.mp4')
-      
+
       if (lyricsPath && lyrics) {
         const syncedLyrics = await LyricsProcessor.smartSynchronize(lyrics, instrumental)
-        await VideoGenerator.generateKaraokeVideo(
-          instrumental,
-          syncedLyrics,
-          finalVideoPath
-        )
+        await VideoGenerator.generateKaraokeVideo(instrumental, syncedLyrics, finalVideoPath)
       } else {
         // Create simple instrumental video
         await VideoGenerator.createLyricVideo([], 300000, finalVideoPath)
@@ -243,7 +240,7 @@ export async function processKaraokeSong(songId: string, options: AutonomousProc
         original: audioPath,
         instrumental: instrumental,
         lyrics: lyricsPath || undefined,
-        video: finalVideoPath
+        video: finalVideoPath,
       },
       youtubeVideoId || undefined
     )
@@ -260,7 +257,6 @@ export async function processKaraokeSong(songId: string, options: AutonomousProc
         console.warn(`Warning: Could not delete temp video: ${error}`)
       }
     }
-
   } catch (error) {
     console.error(`❌ Autonomous processing failed for song ${songId}:`, error)
     KaraokeDB.updateSongStatus(songId, 'failed', 0)
@@ -279,7 +275,7 @@ async function checkUploadsDirectory(title: string, artist: string): Promise<str
     `${artist}_${title}.mp3`,
     `${title}_${artist}.mp3`,
     `${title}.mp3`,
-    `${artist}.mp3`
+    `${artist}.mp3`,
   ]
 
   for (const filename of possibleFiles) {
@@ -291,8 +287,9 @@ async function checkUploadsDirectory(title: string, artist: string): Promise<str
   }
 
   // Also check for any audio files and do fuzzy matching
-  const audioFiles = fs.readdirSync(uploadDir)
-    .filter(file => /\.(mp3|wav|flac|m4a|aac|ogg)$/i.test(file))
+  const audioFiles = fs
+    .readdirSync(uploadDir)
+    .filter((file) => /\.(mp3|wav|flac|m4a|aac|ogg)$/i.test(file))
 
   const titleLower = title.toLowerCase()
   const artistLower = artist.toLowerCase()
@@ -312,11 +309,11 @@ async function checkUploadsDirectory(title: string, artist: string): Promise<str
 export function getProcessingStatus(songId: string) {
   const job = processingJobs.get(songId)
   const song = KaraokeDB.getSong(songId)
-  
+
   return {
     exists: !!job,
     song,
-    isProcessing: !!job
+    isProcessing: !!job,
   }
 }
 

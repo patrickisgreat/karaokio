@@ -90,15 +90,15 @@ uploads/ downloads/ cache/ output/ temp/ youtube_videos/   # Runtime dirs (gitig
 
 `autonomousProcessor.processKaraokeSong()` is the single entry point, fired in the background when a song is queued. Stages, with their progress bands:
 
-| Stage                | Progress | What happens                                             |
-| -------------------- | -------- | -------------------------------------------------------- |
-| Cache check          | 5%       | Serve instantly if (title, artist, quality) cached       |
-| Audio acquisition    | 10–25%   | Uploads/local library → yt-dlp → torrents (if enabled)   |
-| Karaoke video search | 30%      | yt-dlp search for an existing karaoke video (best-effort)|
-| Vocal separation     | 45–70%   | Demucs (`high`) / FFmpeg center-cancel (`fast`)          |
-| Lyrics fetch + sync  | 75%      | Synced LRC from LRCLIB, else fetch text + align locally  |
-| Video assembly       | 85%      | Replace audio in found video, else generate one (ladder) |
-| Cache + ready        | 100%     | Store artifacts, mark `ready`                            |
+| Stage                | Progress | What happens                                              |
+| -------------------- | -------- | --------------------------------------------------------- |
+| Cache check          | 5%       | Serve instantly if (title, artist, quality) cached        |
+| Audio acquisition    | 10–25%   | Uploads/local library → yt-dlp → torrents (if enabled)    |
+| Karaoke video search | 30%      | yt-dlp search for an existing karaoke video (best-effort) |
+| Vocal separation     | 45–70%   | Demucs (`high`) / FFmpeg center-cancel (`fast`)           |
+| Lyrics fetch + sync  | 75%      | Synced LRC from LRCLIB, else fetch text + align locally   |
+| Video assembly       | 85%      | Replace audio in found video, else generate one (ladder)  |
+| Cache + ready        | 100%     | Store artifacts, mark `ready`                             |
 
 Progress and status live in the `songs` table; the UI polls it. Every stage writes its artifact path to the DB as soon as it exists, so a later crash still leaves usable partial output.
 
@@ -117,8 +117,10 @@ Never commit secrets, `karaoke.db`, or anything in the runtime media directories
 ## Conventions
 
 - TypeScript strict; no semicolons (match existing style); 2-space indent
+- Prettier is the formatter (`npm run format`, config in `.prettierrc`) — CI fails unformatted code
 - Tailwind for styling (no CSS modules)
-- Conventional commits: `feat:` `fix:` `refactor:` `test:` `chore:` `docs:` `perf:`
+- Conventional commits: `feat:` `fix:` `refactor:` `test:` `chore:` `docs:` `perf:` — release-please turns these into version bumps, tags, and CHANGELOG entries on merge to main
+- PRs get an automatic Claude Code review on open; `@claude` in any issue/PR comment summons the agent
 - Feature branches only; never commit directly to `main`; PRs via `gh pr create`; the user reviews all PRs before merge
 - **NEVER add `Co-Authored-By` or "Generated with Claude Code" to commits or PRs**
 
@@ -161,20 +163,25 @@ No PR merges without tests covering the behavior it introduces or changes. If it
 
 ```markdown
 ## Scope
+
 <!-- WHAT and WHY. -->
 
 ## Implementation
+
 <!-- HOW, at a high level. Tradeoffs. What to review closely. -->
 
 ## Demo
+
 <!-- This is an audio/video app — show, don't tell. For pipeline changes:
 the log of a real song run, or the output artifact. For UI: screenshot
 (phone + big screen). -->
 
 ## How to Test
+
 <!-- Automated coverage added, plus manual repro steps. -->
 
 ## Degradation & Risk
+
 <!-- Which rung of the fallback ladder does this touch? What happens when
 its external tool/API is missing, slow, or wrong? -->
 ```

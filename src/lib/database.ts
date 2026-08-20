@@ -56,8 +56,15 @@ export class KaraokeDB {
       INSERT INTO songs (id, user_id, song_title, artist, search_query, status, requested_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `)
-    stmt.run(song.id, song.user.id, song.songTitle, song.artist, 
-             `${song.songTitle} ${song.artist}`, song.status, song.requestedAt.toISOString())
+    stmt.run(
+      song.id,
+      song.user.id,
+      song.songTitle,
+      song.artist,
+      `${song.songTitle} ${song.artist}`,
+      song.status,
+      song.requestedAt.toISOString()
+    )
   }
 
   static updateSongStatus(id: string, status: QueuedSong['status'], progress?: number) {
@@ -71,22 +78,25 @@ export class KaraokeDB {
     }
   }
 
-  static updateSongPaths(id: string, paths: Partial<{
-    original_audio_path: string
-    instrumental_path: string
-    lyrics_path: string
-    video_path: string
-  }>) {
+  static updateSongPaths(
+    id: string,
+    paths: Partial<{
+      original_audio_path: string
+      instrumental_path: string
+      lyrics_path: string
+      video_path: string
+    }>
+  ) {
     const updates: string[] = []
     const values: any[] = []
-    
+
     Object.entries(paths).forEach(([key, value]) => {
       if (value) {
         updates.push(`${key} = ?`)
         values.push(value)
       }
     })
-    
+
     if (updates.length > 0) {
       values.push(id)
       const stmt = db.prepare(`UPDATE songs SET ${updates.join(', ')} WHERE id = ?`)
@@ -102,9 +112,9 @@ export class KaraokeDB {
       WHERE s.status IN ('queued', 'processing', 'ready', 'playing')
       ORDER BY s.requested_at ASC
     `)
-    
+
     const rows = stmt.all() as any[]
-    return rows.map(row => ({
+    return rows.map((row) => ({
       id: row.id,
       user: { id: row.user_id, name: row.user_name, color: row.user_color },
       songTitle: row.song_title,
@@ -112,11 +122,13 @@ export class KaraokeDB {
       requestedAt: new Date(row.requested_at),
       status: row.status,
       processingProgress: row.processing_progress,
-      karaoke: row.instrumental_path ? {
-        instrumentalUrl: row.instrumental_path,
-        lyricsUrl: row.lyrics_path,
-        videoUrl: row.video_path
-      } : undefined
+      karaoke: row.instrumental_path
+        ? {
+            instrumentalUrl: row.instrumental_path,
+            lyricsUrl: row.lyrics_path,
+            videoUrl: row.video_path,
+          }
+        : undefined,
     }))
   }
 
@@ -128,10 +140,10 @@ export class KaraokeDB {
       WHERE s.status = 'playing'
       LIMIT 1
     `)
-    
+
     const row = stmt.get() as any
     if (!row) return null
-    
+
     return {
       id: row.id,
       user: { id: row.user_id, name: row.user_name, color: row.user_color },
@@ -140,11 +152,13 @@ export class KaraokeDB {
       requestedAt: new Date(row.requested_at),
       status: row.status,
       processingProgress: row.processing_progress,
-      karaoke: row.instrumental_path ? {
-        instrumentalUrl: row.instrumental_path,
-        lyricsUrl: row.lyrics_path,
-        videoUrl: row.video_path
-      } : undefined
+      karaoke: row.instrumental_path
+        ? {
+            instrumentalUrl: row.instrumental_path,
+            lyricsUrl: row.lyrics_path,
+            videoUrl: row.video_path,
+          }
+        : undefined,
     }
   }
 
@@ -160,10 +174,10 @@ export class KaraokeDB {
       JOIN users u ON s.user_id = u.id
       WHERE s.id = ?
     `)
-    
+
     const row = stmt.get(id) as any
     if (!row) return null
-    
+
     return {
       id: row.id,
       user: { id: row.user_id, name: row.user_name, color: row.user_color },
@@ -172,11 +186,13 @@ export class KaraokeDB {
       requestedAt: new Date(row.requested_at),
       status: row.status,
       processingProgress: row.processing_progress,
-      karaoke: row.instrumental_path ? {
-        instrumentalUrl: row.instrumental_path,
-        lyricsUrl: row.lyrics_path,
-        videoUrl: row.video_path
-      } : undefined
+      karaoke: row.instrumental_path
+        ? {
+            instrumentalUrl: row.instrumental_path,
+            lyricsUrl: row.lyrics_path,
+            videoUrl: row.video_path,
+          }
+        : undefined,
     }
   }
 }

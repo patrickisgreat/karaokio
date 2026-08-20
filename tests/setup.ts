@@ -20,7 +20,7 @@ const TEST_DIRS = {
   TEMP_DIR: path.join(WORKER_ROOT, 'temp'),
   CACHE_DIR: path.join(WORKER_ROOT, 'cache'),
   DOWNLOAD_DIR: path.join(WORKER_ROOT, 'downloads'),
-  YOUTUBE_VIDEO_DIR: path.join(WORKER_ROOT, 'youtube_videos')
+  YOUTUBE_VIDEO_DIR: path.join(WORKER_ROOT, 'youtube_videos'),
 }
 
 process.env.KARAOKE_DB_PATH = TEST_DB_PATH
@@ -35,16 +35,16 @@ process.env.ENABLE_YOUTUBE_DOWNLOAD = 'false'
 
 beforeAll(() => {
   if (!process.env.NODE_ENV) {
-    (process.env as any).NODE_ENV = 'test'
+    ;(process.env as any).NODE_ENV = 'test'
   }
 })
 
 afterEach(() => {
   // Clean up test files after each test (directories themselves stay for the
   // next suite in this worker)
-  Object.values(TEST_DIRS).forEach(dir => {
+  Object.values(TEST_DIRS).forEach((dir) => {
     if (fs.existsSync(dir)) {
-      fs.readdirSync(dir).forEach(file => {
+      fs.readdirSync(dir).forEach((file) => {
         const filePath = path.join(dir, file)
         if (fs.statSync(filePath).isFile()) {
           fs.unlinkSync(filePath)
@@ -86,36 +86,38 @@ declare global {
 expect.extend({
   toBeValidAudioFile(received: string) {
     const audioExtensions = ['.mp3', '.wav', '.flac', '.m4a', '.aac', '.ogg']
-    const hasValidExtension = audioExtensions.some(ext => received.endsWith(ext))
+    const hasValidExtension = audioExtensions.some((ext) => received.endsWith(ext))
     const fileExists = fs.existsSync(received)
-    
+
     if (hasValidExtension && fileExists) {
       return {
         message: () => `Expected ${received} not to be a valid audio file`,
-        pass: true
+        pass: true,
       }
     } else {
       return {
-        message: () => `Expected ${received} to be a valid audio file (exists: ${fileExists}, valid ext: ${hasValidExtension})`,
-        pass: false
+        message: () =>
+          `Expected ${received} to be a valid audio file (exists: ${fileExists}, valid ext: ${hasValidExtension})`,
+        pass: false,
       }
     }
   },
 
   toBeValidVideoFile(received: string) {
     const videoExtensions = ['.mp4', '.avi', '.mov', '.webm', '.mkv']
-    const hasValidExtension = videoExtensions.some(ext => received.endsWith(ext))
+    const hasValidExtension = videoExtensions.some((ext) => received.endsWith(ext))
     const fileExists = fs.existsSync(received)
-    
+
     if (hasValidExtension && fileExists) {
       return {
         message: () => `Expected ${received} not to be a valid video file`,
-        pass: true
+        pass: true,
       }
     } else {
       return {
-        message: () => `Expected ${received} to be a valid video file (exists: ${fileExists}, valid ext: ${hasValidExtension})`,
-        pass: false
+        message: () =>
+          `Expected ${received} to be a valid video file (exists: ${fileExists}, valid ext: ${hasValidExtension})`,
+        pass: false,
       }
     }
   },
@@ -124,24 +126,24 @@ expect.extend({
     if (!fs.existsSync(received)) {
       return {
         message: () => `Expected lyrics file ${received} to exist`,
-        pass: false
+        pass: false,
       }
     }
-    
+
     const content = fs.readFileSync(received, 'utf8')
     const hasTimestamps = /\[\d{2}:\d{2}\.\d{2}\]/.test(content)
     const hasLyrics = content.trim().length > 0
-    
+
     if (hasTimestamps && hasLyrics) {
       return {
         message: () => `Expected ${received} not to have valid lyrics`,
-        pass: true
+        pass: true,
       }
     } else {
       return {
         message: () => `Expected ${received} to have valid lyrics with timestamps`,
-        pass: false
+        pass: false,
       }
     }
-  }
+  },
 })

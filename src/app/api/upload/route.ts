@@ -15,17 +15,23 @@ export async function POST(request: NextRequest) {
     // Validate file type
     const allowedTypes = ['audio/mpeg', 'audio/wav', 'audio/flac', 'audio/ogg']
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ 
-        error: 'Invalid file type. Supported: MP3, WAV, FLAC, OGG' 
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: 'Invalid file type. Supported: MP3, WAV, FLAC, OGG',
+        },
+        { status: 400 }
+      )
     }
 
     // Validate file size (max 50MB)
     const maxSize = 50 * 1024 * 1024 // 50MB in bytes
     if (file.size > maxSize) {
-      return NextResponse.json({ 
-        error: 'File too large. Maximum size is 50MB' 
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: 'File too large. Maximum size is 50MB',
+        },
+        { status: 400 }
+      )
     }
 
     // Create upload directory
@@ -58,11 +64,10 @@ export async function POST(request: NextRequest) {
         originalName,
         path: filePath,
         size,
-        mimeType
+        mimeType,
       },
-      message: 'File uploaded successfully'
+      message: 'File uploaded successfully',
     })
-
   } catch (error) {
     console.error('Upload failed:', error)
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
