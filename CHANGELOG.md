@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.3](https://github.com/patrickisgreat/karaokio/compare/v1.1.2...v1.1.3) (2026-08-21)
+
+
+### Bug Fixes
+
+* image build — keep PyPI primary when installing CPU torch ([f3f5511](https://github.com/patrickisgreat/karaokio/commit/f3f55118cea1b24dd7c0054ed489fa2059d9ad1a))
+* keep PyPI as primary index when installing CPU torch ([9e31ba3](https://github.com/patrickisgreat/karaokio/commit/9e31ba3ba92948d7c81d61c52a9357a8316703db))
+
 ## [1.1.2](https://github.com/patrickisgreat/karaokio/compare/v1.1.1...v1.1.2) (2026-08-20)
 
 
