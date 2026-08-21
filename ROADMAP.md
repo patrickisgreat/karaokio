@@ -70,9 +70,60 @@ _Add "Bohemian Rhapsody" from an uploaded MP3, watch progress reach 100%, click 
 - [ ] **Real lyrics display**: fetch the LRC via the media route, parse it (tiny parser + unit tests), highlight the current line, show next line. Delete the placeholder lyrics.
 - [ ] **Wire uploads to requests**: "Add song" accepts an optional uploaded file; store the upload path on the song row so the pipeline uses it directly instead of filename-guessing.
 - [ ] **Fix Demucs invocation**: resolve the python interpreter, verify expected output layout at runtime (glob for the stem dir instead of assuming), convert output to the requested format, surface stderr on failure.
-- [ ] **Acquisition ladder v1** (uploads → local library dir → yt-dlp audio download). Torrents stay behind `ENABLE_TORRENT_DOWNLOAD=false` by default — yt-dlp is dramatically more reliable and this is a personal-use box.
+- [ ] **Acquisition ladder v1** — see "Library, cache, fetch" below.
 - [ ] **Degrade, don't fail**: pipeline stages catch-and-downgrade per the CLAUDE.md ladder; add a `status_detail` column so the UI can say _why_ a song is audio-only.
 - [ ] Integration test: full pipeline run with mocked tools covering each fallback edge.
+
+### Library, cache, fetch — the three tiers
+
+A karaoke request is arbitrary ("Total Eclipse of the Heart, right now"), so on-demand
+fetch is a hard requirement — but anything processed once must never be processed again.
+Three distinct tiers, often conflated:
+
+| Tier        | Holds                                                  | Lifetime                            |
+| ----------- | ------------------------------------------------------ | ----------------------------------- |
+| **Library** | Source audio the host pre-loaded (their MP3s)          | Permanent, never evicted            |
+| **Cache**   | Processed artifacts: instrumental, timed lyrics, video | Persistent; fetched entries age out |
+| **Fetch**   | On-demand acquisition for anything missing             | Result lands in cache               |
+
+Request flow: canonicalize the request → **cache hit? serve instantly, done** →
+library hit? process it (no fetch) → else fetch → process → store in cache.
+
+- [ ] **Canonicalize before keying.** `title + artist + quality` is too literal: "Bohemian Rhapsody"
+      and "bohemian rhapsody (remastered 2011)" key differently and reprocess the same song. Resolve
+      through MusicBrainz (keyless) for canonical title/artist/duration, and strip the usual noise
+      (`(Remastered)`, `(Live)`, `feat.`, punctuation, leading articles) before hashing.
+- [ ] **Cache whatever succeeded.** `checkCache` currently evicts any entry without a video file, so
+      an audio+lyrics result re-runs Demucs on every request. Store the artifacts that exist and
+      record which rung of the ladder produced them.
+- [ ] **Pin the library.** `cleanupOldEntries` evicts by age and count, which would delete a curated
+      library. Library-derived entries are pinned; only fetched songs age out.
+- [ ] **Cache source audio separately** from processed artifacts, so reprocessing (better quality,
+      improved alignment) never re-fetches — fetching is the fragile step.
+- [ ] **Bulk preprocess command**: walk a folder, run the full pipeline into the cache ahead of time.
+      Demucs is minutes per song, so preprocessing a hundred songs before a party is a hundred
+      instant cache hits on the night.
+
+### Fetching, and what to do when it is blocked
+
+yt-dlp is the fetcher: it downloads the audio stream directly (no realtime capture, no quality
+loss) and, unlike BitTorrent, **uploads nothing** — seeding copyrighted material from AWS risks
+the whole account, which is why torrents are removed rather than merely disabled.
+
+The open question is whether YouTube throttles our datacenter IP. It is testable on the live box,
+so test before architecting. Escalation, cheapest first:
+
+- [ ] **Measure it**: run `yt-dlp -x` on the deployed task and record the outcome here.
+- [ ] **Cookies** if blocked: export a logged-in session, store in Secrets Manager, mount as a file,
+      pass `--cookies`. No new infrastructure.
+- [ ] **Other sources**: yt-dlp supports 1000+ sites; SoundCloud/Bandcamp/Internet Archive lack
+      YouTube's datacenter paranoia.
+- [ ] **Home worker** (only if the above fail): the box drops a request on SQS, a service on the
+      host's home machine polls it, downloads with a residential IP, uploads to S3. Outbound-only
+      from the house — no tunnel, no port forwarding, nothing exposed. If the machine is asleep the
+      request waits. This is also the only safe home for a torrent client, if one is ever wanted.
+- [ ] Build acquisition as a **pluggable fetcher interface** from the start, so a home worker slots
+      in as one more rung without rearchitecting.
 
 ## Phase 2 — Lyrics sync that's actually right
 
