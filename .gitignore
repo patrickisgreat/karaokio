@@ -71,3 +71,7 @@ karaoke.db-*
 *.torrent
 # Test worker sandboxes
 tests/.worker-*
+
+# Go
+/karaokio
+/dist
