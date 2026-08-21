@@ -30,9 +30,15 @@ RUN curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp 
 # Demucs in its own venv, CPU-only torch (the CUDA wheels are ~2.5GB heavier
 # and Fargate has no GPU). `python` on PATH points into the venv, which is the
 # interpreter audioProcessor spawns.
+#
+# PyPI stays the primary index with the pytorch CPU index as extra: a bare
+# --index-url replaces PyPI entirely, which breaks build deps (typing_extensions
+# needs flit_core, absent from the pytorch index). At equal versions the +cpu
+# local tag outranks the plain PyPI wheel (PEP 440), so CPU builds still win.
 RUN python3 -m venv /opt/demucs \
-    && /opt/demucs/bin/pip install --no-cache-dir \
-       --index-url https://download.pytorch.org/whl/cpu torch torchaudio \
+    && /opt/demucs/bin/pip install --no-cache-dir --upgrade pip \
+    && /opt/demucs/bin/pip install --no-cache-dir torch torchaudio \
+       --extra-index-url https://download.pytorch.org/whl/cpu \
     && /opt/demucs/bin/pip install --no-cache-dir demucs \
     && ln -s /opt/demucs/bin/python /usr/local/bin/python
 
