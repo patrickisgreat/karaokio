@@ -23,7 +23,11 @@ Karaokio is a self-hosted karaoke machine for house parties. Guests add songs to
 
 3. **Every external service is optional and fails soft.** The full pipeline must work with **zero API keys** (keyless sources: LRCLIB, MusicBrainz, yt-dlp). Keys in `.env.local` unlock better sources; their absence must never crash a stage. Wrap every external call in a timeout + catch that falls through to the next source.
 
-4. **One box, spun up on demand.** Audio processing, alignment, and video rendering happen on a single machine via spawned tools (ffmpeg, demucs, yt-dlp) — the host's laptop in dev, or the AWS "party box" (a scale-to-zero Fargate task, see `infra/README.md`) for parties. Don't split the pipeline across managed cloud services, and don't add anything that bills while nobody is singing: the box must cost ~nothing when idle. All persistent state lives under `DATA_ROOT` (the EFS mount in AWS) via `src/lib/paths.ts` — new code never invents its own path resolution.
+4. **Local-first, one machine.** Karaokio runs on the machine hosting the party — the same one plugged into the TV. Audio processing, alignment, and video rendering all happen there via spawned tools (ffmpeg, demucs, yt-dlp). Don't split the pipeline across services, don't add a cloud dependency to the core path, and don't assume an internet connection for anything already in the library.
+
+   This was a deliberate reversal: the app ran on AWS Fargate for a while, and the deployment worked, but a datacenter IP is a bad place to fetch music from (YouTube throttles them), Demucs bills by the second on hardware you'd otherwise own, and the guests are standing in the same room as the machine anyway. The infrastructure lives in git history and `cloudformation-toolkit` if it's ever wanted again.
+
+   All persistent state resolves under one `--data-dir` (`internal/config`), so the host can point the library at an external drive. New code never builds its own paths.
 
 5. **Acquisition is host-supplied first.** Priority order: user uploads / local library → yt-dlp audio download → torrents (config-gated, **off by default**). This is a private tool for personal use at the host's home; keep it that way.
 

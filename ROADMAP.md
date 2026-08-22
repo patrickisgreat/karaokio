@@ -39,27 +39,61 @@ _Everything compiles, the test suite is fast and green, and a fresh clone can ge
 - [x] `npm audit fix` (55 → 37 vulns), removed unused deps (`node-cron`, `multer`, `ws`), pinned `.nvmrc` to 22. Remaining 37 vulns are all transitive via `torrent-search-api` (deprecated `request` — the 2 criticals), `webtorrent`, and Next 14 — need breaking upgrades or dependency swaps, tracked for Phase 4.
 - [x] Rewrite SETUP.md against a genuinely fresh machine.
 
-## Phase 0.5 — Party-code auth + the AWS party box
+## Phase 0.5 — Party-code auth, and the AWS detour — CLOSED
 
-_The app is internet-deployable: guests authenticate with a per-party code, and the whole thing runs as a scale-to-zero Fargate task that costs ~nothing while idle._
+_Guests authenticate with a per-party code. The cloud deployment was built, proven, and then deliberately retired._
 
-Infra rails (branch `feat/aws-party-box`; templates contributed to cloudformation-toolkit PR #2):
+Auth (shipped in TypeScript, ported to Go in Phase 0.6):
 
-- [x] `data/efs-filesystem` template + EFS volume support in `containers/fargate-service` (cloudformation-toolkit contribution).
-- [x] Dockerfile: node + ffmpeg + yt-dlp + CPU Demucs with baked htdemucs weights; runs as uid 1000 to match the EFS access point.
-- [x] `DATA_ROOT` path resolution (`src/lib/paths.ts`) so one env var relocates all state onto the EFS mount.
-- [x] `infra/deploy.sh` + Infra workflow: vpc (public-only, **no NAT**), ecr, cluster (pure Fargate **Spot**), service (no ALB, public IP, `DesiredCount=0`), ingress, efs — in order, idempotent.
-- [x] **Party Up 🎤 / Party Down 🌙** workflows: the on/off switch, runnable from the GitHub mobile app; party-up prints the URL and pins autoscaling min=1 so a mid-party lull can't scale the box away.
-- [x] Deploy App workflow: image build/push (actions-toolkit `docker-build-push`) + ECS roll (actions-toolkit `deploy-aws.yml`, `target: ecs`).
-- [ ] One-time bootstrap by the user: OIDC role stack + `AWS_DEPLOY_ROLE_ARN` repo variable (see `infra/README.md`).
-- [ ] Cut actions-toolkit `v1` and repin the `@main` references.
+- [x] Party session model: per-party code persisted in SQLite (or overridden by config), signed HttpOnly session cookie, join page, and a guard on every route except join/status.
+- [x] Host PIN gating skip/remove/reorder/complete and any admin surface.
+- [x] Big-screen QR code embedding the join URL + code.
+- [x] Unit and integration tests: session sign/verify/tamper/rotation, host-gate, join flow.
 
-Auth (required before the box is left publicly reachable — the ingress default is `0.0.0.0/0` on the assumption this exists):
+The AWS party box (retired 2026-08-21). It worked — nine CloudFormation stacks from
+cloudformation-toolkit templates, scale-to-zero Fargate Spot, EFS for state, party
+up/down from a phone — and was torn down anyway, for three reasons that only became
+clear once it existed:
 
-- [x] Party session model: per-party code persisted in SQLite (or set via `PARTY_CODE`), signed HttpOnly session cookie, join page (name + code), and a `requireParty` guard on every API route except join/status. (Per-route guards rather than Next middleware: the edge runtime can't reach better-sqlite3, and explicit guards are individually testable.)
-- [x] Host PIN (`HOST_PIN` env) gating skip/remove/reorder/complete and any admin surface.
-- [x] Big-screen QR code embedding the join URL + code; party code visible on the player screen.
-- [x] Unit tests: session sign/verify, route protection, host-gate; integration test for the join flow.
+1. **A datacenter IP is the wrong place to fetch music from.** YouTube throttles them,
+   and on-demand fetch is not optional for karaoke: someone will request a song nobody
+   anticipated. A residential IP does this without ceremony.
+2. **Demucs bills by the second** on hardware the host already owns and which is
+   sitting in the same room as the party.
+3. **Media is large and local disk is free**, and the host wants the library on an
+   external drive anyway.
+
+What survived and still pays off: the `data/efs-filesystem` template and Fargate EFS
+volume support are merged into cloudformation-toolkit and reusable by anything; the
+CI, release, and Claude-review workflows are language-agnostic and stay; every design
+here — the fallback ladders, the cache model, the auth scheme — carries over unchanged.
+`infra/` is recoverable from git history if a hosted deployment is ever wanted.
+
+## Phase 0.6 — Go backend, local-first
+
+_The backend becomes a single compiled binary with the frontend embedded; the host points it at any drive and runs it. TypeScript stays on `archive/typescript-backend` to port from._
+
+Architecture: `domain` (entities, no dependencies) ← `store` (SQLite repositories) ←
+`service` (business logic) ← `httpapi` (transport). Dependencies point inward;
+services declare narrow interfaces that outer layers implement, so business logic is
+testable without a database or an HTTP server.
+
+- [x] `internal/jobs`: bounded worker pool, `exec.CommandContext` so cancelling a job
+      kills its subprocess, panic isolation, graceful shutdown. Fixes the three real
+      defects of the old orchestrator — no queue, no supervision, fake cancellation.
+- [x] `internal/config`: one `--data-dir` relocates the entire state tree, external
+      drives included.
+- [x] `internal/domain`: entities with derived per-stage progress and an explicit
+      degraded state, so the queue can show why a song came out audio-only.
+- [ ] `internal/store`: SQLite (`modernc.org/sqlite`, pure Go — no cgo) implementing
+      the repository interfaces, with schema migrations.
+- [ ] `internal/service`: queue service and party auth, ported from the TypeScript.
+- [ ] `internal/httpapi`: router, session middleware, JSON handlers, SSE for live
+      stage progress, and media serving with HTTP Range support.
+- [ ] Pipeline stages behind a common interface, one type per stage.
+- [ ] Frontend: Next.js → Vite React SPA, embedded via `embed.FS`.
+- [ ] CI: replace the npm pipeline with `go vet` / `go test` / `go build` plus the
+      frontend build.
 
 ## Phase 1 — One song, end to end (the vertical slice)
 
