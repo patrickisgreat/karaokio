@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/patrickisgreat/karaokio/compare/v1.1.3...v1.2.0) (2026-08-22)
+
+
+### Features
+
+* **domain:** entities, statuses, and per-stage progress ([d70c077](https://github.com/patrickisgreat/karaokio/commit/d70c077cb65a3dafaaae729fd76414c7ce79d942))
+* **go:** job queue and config foundation for the local-first rewrite ([a025176](https://github.com/patrickisgreat/karaokio/commit/a0251767e8d9ab4ad467802cc3c1f5fd5efd9e1d))
+
 ## [1.1.3](https://github.com/patrickisgreat/karaokio/compare/v1.1.2...v1.1.3) (2026-08-21)
 
 
